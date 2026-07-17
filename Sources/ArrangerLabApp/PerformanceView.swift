@@ -45,6 +45,8 @@ struct PerformanceView: View {
     @State private var keyboardSetCategoryFilter = "Todas"
     @State private var sceneName = ""
     @State private var setListName = ""
+    @State private var activeShowSetListID: UUID?
+    @State private var showItemIndex = 0
 
     private var enabled: Bool { model.connected }
     private var verifiedPresets: [DevicePreset] { model.profile.presets.filter { $0.status == .verified } }
@@ -92,7 +94,24 @@ struct PerformanceView: View {
         }
     }
 
+    private var activeShowSetList: PerformanceSetList? {
+        guard let activeShowSetListID else { return nil }
+        return model.performanceSetLists.first { $0.id == activeShowSetListID }
+    }
+
     var body: some View {
+        Group {
+            if let setList = activeShowSetList, !setList.items.isEmpty {
+                showMode(setList)
+            } else {
+                performanceEditor
+            }
+        }
+        .onAppear { loadPartSettings(part) }
+        .onChange(of: part) { _, selectedPart in loadPartSettings(selectedPart) }
+    }
+
+    private var performanceEditor: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 PageHeader(title: "Tocar", subtitle: "Controle o teclado sem pensar em MIDI.")
@@ -247,8 +266,132 @@ struct PerformanceView: View {
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .onAppear { loadPartSettings(part) }
-        .onChange(of: part) { _, selectedPart in loadPartSettings(selectedPart) }
+    }
+
+    private func showMode(_ setList: PerformanceSetList) -> some View {
+        let safeIndex = min(max(showItemIndex, 0), setList.items.count - 1)
+        let currentScene = model.performanceScene(for: setList.items[safeIndex])
+        let nextScene = safeIndex + 1 < setList.items.count
+            ? model.performanceScene(for: setList.items[safeIndex + 1])
+            : nil
+
+        return VStack(alignment: .leading, spacing: 24) {
+            HStack {
+                Button("Sair do Modo Show", systemImage: "chevron.left") {
+                    activeShowSetListID = nil
+                    showItemIndex = 0
+                }
+                .buttonStyle(.bordered)
+
+                Spacer()
+
+                Label(
+                    enabled ? "PA700 conectado" : "PA700 desconectado",
+                    systemImage: enabled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(enabled ? .green : .orange)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(setList.name)
+                    .font(.title2.weight(.semibold))
+                Text("Cena \(safeIndex + 1) de \(setList.items.count)")
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                ProgressView(value: Double(safeIndex + 1), total: Double(setList.items.count))
+                    .accessibilityLabel("Progresso da Set List")
+                    .accessibilityValue("Cena \(safeIndex + 1) de \(setList.items.count)")
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("AGORA")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                if let currentScene {
+                    Text(currentScene.name)
+                        .font(.system(size: 34, weight: .semibold, design: .default))
+                        .lineLimit(2)
+                    Text(model.performanceSceneSummary(currentScene))
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
+                    Button {
+                        model.applyPerformanceScene(currentScene)
+                        loadPartSettings(part)
+                    } label: {
+                        Label("Aplicar cena", systemImage: "play.fill")
+                            .font(.title3.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!enabled)
+                    .keyboardShortcut(.return, modifiers: [])
+                    .accessibilityHint("Envia esta cena ao teclado")
+                } else {
+                    Label("Cena indisponível", systemImage: "exclamationmark.triangle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+
+            Divider()
+
+            HStack(spacing: 16) {
+                Button {
+                    showItemIndex = max(0, safeIndex - 1)
+                } label: {
+                    Label("Anterior", systemImage: "chevron.left")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 42)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(safeIndex == 0)
+                .keyboardShortcut(.leftArrow, modifiers: [])
+
+                Button {
+                    showItemIndex = min(setList.items.count - 1, safeIndex + 1)
+                } label: {
+                    Label("Próxima", systemImage: "chevron.right")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 42)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(safeIndex == setList.items.count - 1)
+                .keyboardShortcut(.rightArrow, modifiers: [])
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(nextScene == nil ? "ÚLTIMA CENA" : "A SEGUIR")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                if let nextScene {
+                    Text(nextScene.name).font(.title3.weight(.medium))
+                    Text(model.performanceSceneSummary(nextScene))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text("Fim de \(setList.name)")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(32)
+        .frame(maxWidth: 760, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var sceneBuilder: some View {
@@ -375,6 +518,12 @@ struct PerformanceView: View {
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                                 Spacer()
+                                Button("Modo Show", systemImage: "play.rectangle.fill") {
+                                    activeShowSetListID = setList.id
+                                    showItemIndex = 0
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(setList.items.isEmpty)
                                 Button(role: .destructive) { model.deletePerformanceSetList(setList) } label: {
                                     Image(systemName: "trash")
                                 }
