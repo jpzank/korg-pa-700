@@ -104,6 +104,25 @@ func run() throws {
     invalidScene.variation = 5
     do { try invalidScene.validate(); throw HarnessFailure(description: "invalid scene variation accepted") }
     catch ArrangerLabError.invalidValue { passed += 1; print("PASS  invalid scene variation rejected") }
+    let firstSetListItem = PerformanceSetListItem(sceneID: scene.id)
+    let repeatedSetListItem = PerformanceSetListItem(sceneID: scene.id)
+    let setList = PerformanceSetList(
+        name: "Casamento",
+        items: [firstSetListItem, repeatedSetListItem],
+        createdAt: sceneDate,
+        updatedAt: sceneDate
+    )
+    try setList.validate()
+    try check(setList.items.map(\.sceneID) == [scene.id, scene.id], "set list supports repeating a scene in the running order")
+    let setListURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-setlists.json")
+    defer { try? FileManager.default.removeItem(at: setListURL) }
+    try PerformanceSetListStore.save([setList], to: setListURL)
+    let loadedSetLists = try PerformanceSetListStore.load(from: setListURL)
+    try check(loadedSetLists == [setList], "performance set list JSON round trip")
+    var invalidSetList = setList
+    invalidSetList.items.append(firstSetListItem)
+    do { try invalidSetList.validate(); throw HarnessFailure(description: "duplicate set list item ID accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  duplicate set list item ID rejected") }
     let volume = try driver.compile(.setPartVolume(target: target, level: 0.5), allowDraft: false)
     try check(volume.first?.message == .controlChange(channel: 0, controller: 7, value: 64), "Verified normalized volume compiles operationally")
     let expression = try driver.compile(.setPartExpression(target: target, level: 0.5), allowDraft: false)

@@ -123,6 +123,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var auditionMessage = "Escolha um timbre para ouvir"
     @Published private(set) var auditionExperimentURL: URL?
     @Published private(set) var performanceScenes: [PerformanceScene] = []
+    @Published private(set) var performanceSetLists: [PerformanceSetList] = []
     @Published private(set) var performanceKeyboardSetEntryID: String?
     @Published private(set) var performanceStyleID: String?
     @Published private(set) var performanceVariation = 1
@@ -319,6 +320,7 @@ final class AppModel: ObservableObject {
         restoreLatestVerification()
         restoreLatestBatchCatalog()
         restorePerformanceScenes()
+        restorePerformanceSetLists()
     }
 
     func connect() {
@@ -1234,10 +1236,81 @@ final class AppModel: ObservableObject {
     func deletePerformanceScene(_ scene: PerformanceScene) {
         do {
             let updated = performanceScenes.filter { $0.id != scene.id }
+            let updatedSetLists = performanceSetLists.map { setList in
+                var copy = setList
+                copy.items.removeAll { $0.sceneID == scene.id }
+                if copy.items != setList.items { copy.updatedAt = Date() }
+                return copy
+            }
             try persistPerformanceScenes(updated)
+            try persistPerformanceSetLists(updatedSetLists)
             performanceScenes = updated
+            performanceSetLists = updatedSetLists
             performanceStatus = "Cena \(scene.name) excluída"
         } catch { fail(error) }
+    }
+
+    @discardableResult
+    func createPerformanceSetList(named rawName: String) -> Bool {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            performanceStatus = "Digite um nome para a Set List"
+            return false
+        }
+        guard !performanceSetLists.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            performanceStatus = "Já existe uma Set List chamada \(name)"
+            return false
+        }
+        do {
+            var updated = performanceSetLists
+            updated.append(.init(name: name))
+            updated.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            try persistPerformanceSetLists(updated)
+            performanceSetLists = updated
+            performanceStatus = "Set List \(name) criada"
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
+    }
+
+    func addPerformanceScene(_ scene: PerformanceScene, to setList: PerformanceSetList) {
+        guard updatePerformanceSetList(setList.id, update: { updated in
+            updated.items.append(.init(sceneID: scene.id))
+        }) else { return }
+        performanceStatus = "\(scene.name) adicionada a \(setList.name)"
+    }
+
+    func removePerformanceSetListItem(_ item: PerformanceSetListItem, from setList: PerformanceSetList) {
+        guard updatePerformanceSetList(setList.id, update: { updated in
+            updated.items.removeAll { $0.id == item.id }
+        }) else { return }
+        performanceStatus = "Item removido de \(setList.name)"
+    }
+
+    func movePerformanceSetListItem(_ item: PerformanceSetListItem, in setList: PerformanceSetList, offset: Int) {
+        guard offset == -1 || offset == 1,
+              let index = setList.items.firstIndex(where: { $0.id == item.id }) else { return }
+        let destination = index + offset
+        guard setList.items.indices.contains(destination) else { return }
+        guard updatePerformanceSetList(setList.id, update: { updated in
+            updated.items.swapAt(index, destination)
+        }) else { return }
+        performanceStatus = "Ordem de \(setList.name) atualizada"
+    }
+
+    func deletePerformanceSetList(_ setList: PerformanceSetList) {
+        do {
+            let updated = performanceSetLists.filter { $0.id != setList.id }
+            try persistPerformanceSetLists(updated)
+            performanceSetLists = updated
+            performanceStatus = "Set List \(setList.name) excluída"
+        } catch { fail(error) }
+    }
+
+    func performanceScene(for item: PerformanceSetListItem) -> PerformanceScene? {
+        performanceScenes.first { $0.id == item.sceneID }
     }
 
     func togglePerformanceArranger() {
@@ -2175,11 +2248,45 @@ final class AppModel: ObservableObject {
         try PerformanceSceneStore.save(scenes, to: performanceSceneURL())
     }
 
+    private func performanceSetListURL() throws -> URL {
+        try ArrLabPackage.applicationSupportDirectory()
+            .appendingPathComponent("Scenes", isDirectory: true)
+            .appendingPathComponent("setlists.json")
+    }
+
+    private func persistPerformanceSetLists(_ setLists: [PerformanceSetList]) throws {
+        try PerformanceSetListStore.save(setLists, to: performanceSetListURL())
+    }
+
+    @discardableResult
+    private func updatePerformanceSetList(_ id: UUID, update: (inout PerformanceSetList) -> Void) -> Bool {
+        guard let index = performanceSetLists.firstIndex(where: { $0.id == id }) else { return false }
+        do {
+            var updated = performanceSetLists
+            update(&updated[index])
+            updated[index].updatedAt = Date()
+            try persistPerformanceSetLists(updated)
+            performanceSetLists = updated
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
+    }
+
     private func restorePerformanceScenes() {
         do {
             performanceScenes = try PerformanceSceneStore.load(from: performanceSceneURL())
         } catch {
             lastError = "Cenas não puderam ser carregadas: \(error.localizedDescription)"
+        }
+    }
+
+    private func restorePerformanceSetLists() {
+        do {
+            performanceSetLists = try PerformanceSetListStore.load(from: performanceSetListURL())
+        } catch {
+            lastError = "Set Lists não puderam ser carregadas: \(error.localizedDescription)"
         }
     }
 

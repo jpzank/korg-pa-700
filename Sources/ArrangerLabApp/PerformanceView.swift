@@ -44,6 +44,7 @@ struct PerformanceView: View {
     @State private var keyboardSetSearchText = ""
     @State private var keyboardSetCategoryFilter = "Todas"
     @State private var sceneName = ""
+    @State private var setListName = ""
 
     private var enabled: Bool { model.connected }
     private var verifiedPresets: [DevicePreset] { model.profile.presets.filter { $0.status == .verified } }
@@ -97,6 +98,8 @@ struct PerformanceView: View {
                 PageHeader(title: "Tocar", subtitle: "Controle o teclado sem pensar em MIDI.")
 
                 sceneBuilder
+
+                setListBuilder
 
                 Divider()
 
@@ -299,6 +302,19 @@ struct PerformanceView: View {
                             }
                             .buttonStyle(.bordered)
                             .disabled(!enabled)
+                            if !model.performanceSetLists.isEmpty {
+                                Menu {
+                                    ForEach(model.performanceSetLists) { setList in
+                                        Button(setList.name) {
+                                            model.addPerformanceScene(scene, to: setList)
+                                        }
+                                    }
+                                } label: {
+                                    Label("Adicionar", systemImage: "text.badge.plus")
+                                }
+                                .menuStyle(.borderlessButton)
+                                .help("Adicionar a uma Set List")
+                            }
                             Button(role: .destructive) { model.deletePerformanceScene(scene) } label: {
                                 Image(systemName: "trash")
                             }
@@ -315,6 +331,113 @@ struct PerformanceView: View {
             Text(model.performanceStatus)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var setListBuilder: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Set Lists").font(.headline)
+                    Text("Organize as cenas na ordem da apresentação.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\(model.performanceSetLists.count) listas")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                TextField("Nome da Set List", text: $setListName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { createSetList() }
+                Button("Criar", systemImage: "plus") { createSetList() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(setListName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if model.performanceSetLists.isEmpty {
+                Text("Crie uma lista e use Adicionar nas cenas acima.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 4)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(model.performanceSetLists) { setList in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(setList.name).fontWeight(.semibold)
+                                Text("\(setList.items.count) itens")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button(role: .destructive) { model.deletePerformanceSetList(setList) } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .help("Excluir Set List")
+                            }
+
+                            if setList.items.isEmpty {
+                                Text("Nenhuma cena adicionada.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(Array(setList.items.enumerated()), id: \.element.id) { index, item in
+                                    HStack(spacing: 9) {
+                                        Text("\(index + 1)")
+                                            .font(.caption.monospacedDigit())
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 20, alignment: .trailing)
+                                        if let scene = model.performanceScene(for: item) {
+                                            VStack(alignment: .leading, spacing: 1) {
+                                                Text(scene.name)
+                                                Text(model.performanceSceneSummary(scene))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                                    .lineLimit(1)
+                                            }
+                                            Spacer()
+                                            Button("Aplicar", systemImage: "play.fill") {
+                                                model.applyPerformanceScene(scene)
+                                                loadPartSettings(part)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .disabled(!enabled)
+                                        } else {
+                                            Text("Cena indisponível").foregroundStyle(.secondary)
+                                            Spacer()
+                                        }
+                                        Button {
+                                            model.movePerformanceSetListItem(item, in: setList, offset: -1)
+                                        } label: { Image(systemName: "chevron.up") }
+                                        .disabled(index == 0)
+                                        .help("Mover para cima")
+                                        Button {
+                                            model.movePerformanceSetListItem(item, in: setList, offset: 1)
+                                        } label: { Image(systemName: "chevron.down") }
+                                        .disabled(index == setList.items.count - 1)
+                                        .help("Mover para baixo")
+                                        Button {
+                                            model.removePerformanceSetListItem(item, from: setList)
+                                        } label: { Image(systemName: "xmark") }
+                                        .help("Remover da Set List")
+                                    }
+                                    .controlSize(.small)
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+            }
         }
     }
 
@@ -505,6 +628,10 @@ struct PerformanceView: View {
 
     private func saveScene() {
         if model.saveCurrentPerformanceScene(named: sceneName) { sceneName = "" }
+    }
+
+    private func createSetList() {
+        if model.createPerformanceSetList(named: setListName) { setListName = "" }
     }
 
     private func loadPartSettings(_ selectedPart: PerformancePart) {
