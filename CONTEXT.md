@@ -14,6 +14,10 @@ Tested code that identifies an instrument, declares capabilities, validates para
 
 A manufacturer-independent request such as setting a part volume, selecting a device preset, changing a transport state or selecting a SongBook entry. It contains intent and validated values, never raw MIDI.
 
+### Musical Intent
+
+A non-executable interpretation of a human command into manufacturer-independent Instrument Actions. In v1 it is deterministic and local: it recognizes only exact names from Verified operational catalogues and arranger variations 1 through 4. It must produce an explicit preview and cannot emit raw MIDI, guess an unsupported semantic sound or bypass the confirmation required to apply the resulting scene.
+
 ### Keyboard Part
 
 A target expressed as `zone + layer`. `Korg Upper1` and `Yamaha Right1` are aliases of `zone:right, layer:1`; `Korg Lower` is an alias of `zone:left, layer:1`.

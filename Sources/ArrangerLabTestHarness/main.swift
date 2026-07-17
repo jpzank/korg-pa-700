@@ -76,6 +76,32 @@ func run() throws {
         .programChange(channel: 15, program: 0)
     ], "Physically confirmed Jimmy Organ Keyboard Set compiles as 16.1.0 operationally")
     try check(profile.mappings["keyboardSetLibrarySelection"]?.status == .verified, "Keyboard Set Library profile mapping is Verified")
+    let musicalIntent = MusicalIntentTranslator.translate(
+        "Jimmy Organ com Brush Ballad na variação 3",
+        keyboardSets: keyboardSetLibrary.keyboardSets,
+        styles: styleCatalog.styles
+    )
+    try check(musicalIntent.keyboardSet?.id == jimmyOrganSet.id, "musical intent resolves exact Keyboard Set name")
+    try check(musicalIntent.style?.id == brushBallad.id, "musical intent resolves exact Style name")
+    try check(musicalIntent.variation == 3, "musical intent resolves accented Portuguese variation")
+    let partialIntent = MusicalIntentTranslator.translate(
+        "Use Brush Ballad, var 2",
+        keyboardSets: keyboardSetLibrary.keyboardSets,
+        styles: styleCatalog.styles
+    )
+    try check(partialIntent.keyboardSet == nil && partialIntent.style?.id == brushBallad.id && partialIntent.variation == 2, "musical intent preserves unspecified fields")
+    let wordVariationIntent = MusicalIntentTranslator.translate(
+        "Concert Grand na variação três agora",
+        keyboardSets: keyboardSetLibrary.keyboardSets,
+        styles: styleCatalog.styles
+    )
+    try check(wordVariationIntent.keyboardSet?.id == concertGrandSet.id && wordVariationIntent.variation == 3, "musical intent accepts variation written as a word")
+    let unknownIntent = MusicalIntentTranslator.translate(
+        "Quero um som espacial e aveludado",
+        keyboardSets: keyboardSetLibrary.keyboardSets,
+        styles: styleCatalog.styles
+    )
+    try check(unknownIntent.isEmpty, "musical intent refuses unsupported semantic guesses")
     let target = try KeyboardPartTarget(zone: .right, layer: 1)
     let sceneDate = Date(timeIntervalSince1970: 123)
     let scene = PerformanceScene(

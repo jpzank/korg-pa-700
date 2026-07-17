@@ -4,6 +4,19 @@ import ArrangerLabCore
 import ArrangerLabMIDI
 import Foundation
 
+struct PerformanceIntentChange: Identifiable, Equatable {
+    let label: String
+    let previousValue: String
+    let nextValue: String
+
+    var id: String { label }
+}
+
+struct PerformanceIntentPreview: Equatable {
+    let scene: PerformanceScene
+    let changes: [PerformanceIntentChange]
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     enum Section: String, CaseIterable, Identifiable {
@@ -130,6 +143,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var performancePartSettings: [KeyboardPartTarget: PerformanceScenePart] = Dictionary(
         uniqueKeysWithValues: PerformanceScene.defaultParts().map { ($0.target, $0) }
     )
+    @Published private(set) var performanceIntentPreview: PerformanceIntentPreview?
+    @Published private(set) var performanceIntentStatus = "Nenhum MIDI será enviado antes da sua confirmação"
 
     let profile: InstrumentProfile
     let driver: PA700Driver
@@ -1175,6 +1190,79 @@ final class AppModel: ObservableObject {
         return [keyboardSet, style, "Variação \(scene.variation)"].compactMap { $0 }.joined(separator: " · ")
     }
 
+    func preparePerformanceIntent(_ command: String) {
+        let translation = MusicalIntentTranslator.translate(
+            command,
+            keyboardSets: keyboardSetLibrarySelectionOperational ? keyboardSetLibraryEntries : [],
+            styles: styleSelectionOperational ? arrangerStyles : []
+        )
+        guard !translation.isEmpty else {
+            performanceIntentPreview = nil
+            performanceIntentStatus = "Não reconheci um nome exato ou uma variação de 1 a 4"
+            return
+        }
+
+        let currentKeyboardSetName = performanceKeyboardSetEntryID.flatMap { id in
+            keyboardSetLibraryEntries.first(where: { $0.id == id })?.displayName
+        } ?? "Não definido"
+        let currentStyleName = performanceStyleID.flatMap { id in
+            arrangerStyles.first(where: { $0.id == id })?.displayName
+        } ?? "Não definido"
+        var changes: [PerformanceIntentChange] = []
+
+        if let keyboardSet = translation.keyboardSet {
+            changes.append(.init(
+                label: "Timbre / conjunto",
+                previousValue: currentKeyboardSetName,
+                nextValue: keyboardSet.displayName
+            ))
+        }
+        if let style = translation.style {
+            changes.append(.init(
+                label: "Ritmo",
+                previousValue: currentStyleName,
+                nextValue: style.displayName
+            ))
+        }
+        if let variation = translation.variation {
+            changes.append(.init(
+                label: "Variação",
+                previousValue: String(performanceVariation),
+                nextValue: String(variation)
+            ))
+        }
+
+        let orderedParts = PerformanceScene.defaultParts().map { defaultPart in
+            performancePartSettings[defaultPart.target] ?? defaultPart
+        }
+        performanceIntentPreview = .init(
+            scene: PerformanceScene(
+                name: "Comando preparado",
+                keyboardSetEntryID: translation.keyboardSet?.id ?? performanceKeyboardSetEntryID,
+                styleID: translation.style?.id ?? performanceStyleID,
+                variation: translation.variation ?? performanceVariation,
+                parts: orderedParts
+            ),
+            changes: changes
+        )
+        performanceIntentStatus = "Prévia pronta. Revise as alterações antes de aplicar."
+    }
+
+    func clearPerformanceIntentPreview(message: String = "Nenhum MIDI será enviado antes da sua confirmação") {
+        performanceIntentPreview = nil
+        performanceIntentStatus = message
+    }
+
+    func applyPerformanceIntent() {
+        guard let preview = performanceIntentPreview else {
+            performanceIntentStatus = "Prepare uma prévia primeiro"
+            return
+        }
+        if applyPerformanceScene(preview.scene) {
+            performanceIntentStatus = "Comando aplicado usando somente ações Verified"
+        }
+    }
+
     @discardableResult
     func saveCurrentPerformanceScene(named rawName: String) -> Bool {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1212,7 +1300,8 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func applyPerformanceScene(_ scene: PerformanceScene) {
+    @discardableResult
+    func applyPerformanceScene(_ scene: PerformanceScene) -> Bool {
         do {
             var scheduled: [ScheduledMIDIMessage] = []
             var baseOffset: UInt64 = 0
@@ -1230,7 +1319,11 @@ final class AppModel: ObservableObject {
             performancePartSettings = Dictionary(uniqueKeysWithValues: scene.parts.map { ($0.target, $0) })
             status = "Cena \(scene.name) aplicada"
             performanceStatus = status
-        } catch { fail(error) }
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
     }
 
     func deletePerformanceScene(_ scene: PerformanceScene) {

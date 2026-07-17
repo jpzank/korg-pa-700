@@ -45,6 +45,7 @@ struct PerformanceView: View {
     @State private var keyboardSetCategoryFilter = "Todas"
     @State private var sceneName = ""
     @State private var setListName = ""
+    @State private var intentCommand = ""
     @State private var activeShowSetListID: UUID?
     @State private var showItemIndex = 0
 
@@ -115,6 +116,10 @@ struct PerformanceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 PageHeader(title: "Tocar", subtitle: "Controle o teclado sem pensar em MIDI.")
+
+                musicalAssistant
+
+                Divider()
 
                 sceneBuilder
 
@@ -265,6 +270,97 @@ struct PerformanceView: View {
             }
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var musicalAssistant: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Assistente musical").font(.headline)
+                    Text("Use os nomes exatos do catálogo. O app prepara a cena e espera sua confirmação.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Label("Interpretação local", systemImage: "lock.shield")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                TextField("Jimmy Organ com Brush Ballad na variação 3", text: $intentCommand)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { prepareIntent() }
+                    .onChange(of: intentCommand) { _, _ in
+                        if model.performanceIntentPreview != nil {
+                            model.clearPerformanceIntentPreview(message: "Comando alterado. Prepare uma nova prévia.")
+                        }
+                    }
+                Button("Preparar prévia", systemImage: "list.bullet.clipboard") { prepareIntent() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(intentCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            Text("Exemplo: Concert Grand com Brush Ballad na variação 2")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            if let preview = model.performanceIntentPreview {
+                Divider()
+
+                HStack {
+                    Text("PRÉVIA").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Spacer()
+                    Label("Somente ações Verified", systemImage: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(preview.changes) { change in
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(change.label)
+                                .font(.callout.weight(.medium))
+                                .frame(width: 130, alignment: .leading)
+                            Text(change.previousValue)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Image(systemName: "arrow.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(change.nextValue)
+                                .font(.callout.weight(.medium))
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 7)
+                        if change.id != preview.changes.last?.id { Divider() }
+                    }
+                }
+
+                HStack {
+                    Button("Descartar", systemImage: "xmark") {
+                        model.clearPerformanceIntentPreview()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer()
+
+                    Button("Aplicar ao teclado", systemImage: "play.fill") {
+                        model.applyPerformanceIntent()
+                        loadPartSettings(part)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!enabled)
+                }
+            }
+
+            Label(model.performanceIntentStatus, systemImage: model.performanceIntentPreview == nil ? "shield" : "eye")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -777,6 +873,10 @@ struct PerformanceView: View {
 
     private func saveScene() {
         if model.saveCurrentPerformanceScene(named: sceneName) { sceneName = "" }
+    }
+
+    private func prepareIntent() {
+        model.preparePerformanceIntent(intentCommand)
     }
 
     private func createSetList() {
