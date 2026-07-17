@@ -2,6 +2,8 @@
 
 Arranger Lab is an internal macOS MIDI laboratory for discovering and verifying manufacturer-independent arranger keyboard actions. The PA700 is the first hardware profile. External or generative AI remains outside v1; the app includes a deterministic local assistant that recognizes only exact Verified catalogue names and arranger variations. The bundled PA700 resources now include the complete Sound catalogue, all 379 factory Styles and all 298 factory Keyboard Sets from the official firmware-1.5 documentation.
 
+Current release: **1.0.0**. See [CHANGELOG.md](CHANGELOG.md) and the [v1.0.0 acceptance checklist](docs/release/v1.0.0-checklist.md).
+
 ## Run
 
 Requirements: macOS 14+, Swift 5.10+ and a CoreMIDI device.
@@ -10,6 +12,7 @@ Requirements: macOS 14+, Swift 5.10+ and a CoreMIDI device.
 swift run ArrangerLabApp
 swift run ArrangerLabTestHarness
 ./scripts/build-app.sh
+./scripts/release.sh
 open "outputs/Arranger Lab.app"
 ```
 
