@@ -77,6 +77,33 @@ func run() throws {
     ], "Physically confirmed Jimmy Organ Keyboard Set compiles as 16.1.0 operationally")
     try check(profile.mappings["keyboardSetLibrarySelection"]?.status == .verified, "Keyboard Set Library profile mapping is Verified")
     let target = try KeyboardPartTarget(zone: .right, layer: 1)
+    let sceneDate = Date(timeIntervalSince1970: 123)
+    let scene = PerformanceScene(
+        name: "Restaurante",
+        keyboardSetEntryID: jimmyOrganSet.id,
+        styleID: brushBallad.id,
+        variation: 3,
+        parts: [
+            .init(target: target, presetID: "jimmy-organ", volume: 0.5, expression: 0.75, pan: -0.25)
+        ],
+        createdAt: sceneDate,
+        updatedAt: sceneDate
+    )
+    let sceneActions = try scene.actions()
+    try check(sceneActions.count == 7, "performance scene compiles every declared action")
+    try check(sceneActions[0] == .selectArrangerStyle(styleID: brushBallad.id), "performance scene applies Style first")
+    try check(sceneActions[1] == .selectKeyboardSetLibraryEntry(entryID: jimmyOrganSet.id), "performance scene applies Keyboard Set after Style")
+    try check(sceneActions[2] == .selectArrangerElement(.variation3), "performance scene applies exact Variation")
+    try check(sceneActions[3] == .selectDevicePreset(target: target, presetID: "jimmy-organ"), "performance scene applies exact verified part preset")
+    let sceneURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-scenes.json")
+    defer { try? FileManager.default.removeItem(at: sceneURL) }
+    try PerformanceSceneStore.save([scene], to: sceneURL)
+    let loadedScenes = try PerformanceSceneStore.load(from: sceneURL)
+    try check(loadedScenes == [scene], "performance scene JSON round trip")
+    var invalidScene = scene
+    invalidScene.variation = 5
+    do { try invalidScene.validate(); throw HarnessFailure(description: "invalid scene variation accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  invalid scene variation rejected") }
     let volume = try driver.compile(.setPartVolume(target: target, level: 0.5), allowDraft: false)
     try check(volume.first?.message == .controlChange(channel: 0, controller: 7, value: 64), "Verified normalized volume compiles operationally")
     let expression = try driver.compile(.setPartExpression(target: target, level: 0.5), allowDraft: false)

@@ -43,6 +43,7 @@ struct PerformanceView: View {
     @State private var styleCategoryFilter = "Todas"
     @State private var keyboardSetSearchText = ""
     @State private var keyboardSetCategoryFilter = "Todas"
+    @State private var sceneName = ""
 
     private var enabled: Bool { model.connected }
     private var verifiedPresets: [DevicePreset] { model.profile.presets.filter { $0.status == .verified } }
@@ -94,6 +95,10 @@ struct PerformanceView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 PageHeader(title: "Tocar", subtitle: "Controle o teclado sem pensar em MIDI.")
+
+                sceneBuilder
+
+                Divider()
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Parte").font(.headline)
@@ -238,6 +243,78 @@ struct PerformanceView: View {
             }
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .onAppear { loadPartSettings(part) }
+        .onChange(of: part) { _, selectedPart in loadPartSettings(selectedPart) }
+    }
+
+    private var sceneBuilder: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Cenas").font(.headline)
+                    Text("Salve o Keyboard Set, Style, variação e mix atuais para recuperar tudo com um clique.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text("\(model.performanceScenes.count) salvas")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                TextField("Nome da cena", text: $sceneName)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { saveScene() }
+                Button("Salvar estado atual", systemImage: "plus") { saveScene() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(sceneName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            Label(model.currentPerformanceSummary, systemImage: "slider.horizontal.3")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if model.performanceScenes.isEmpty {
+                Text("Escolha seus sons e ritmo abaixo, ajuste o mix e salve a primeira cena.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 4)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(model.performanceScenes) { scene in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(scene.name).fontWeight(.medium)
+                                Text(model.performanceSceneSummary(scene))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Button("Aplicar", systemImage: "play.fill") {
+                                model.applyPerformanceScene(scene)
+                                loadPartSettings(part)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(!enabled)
+                            Button(role: .destructive) { model.deletePerformanceScene(scene) } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .help("Excluir cena")
+                        }
+                        .padding(.vertical, 8)
+                        if scene.id != model.performanceScenes.last?.id { Divider() }
+                    }
+                }
+            }
+
+            Text(model.performanceStatus)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -424,6 +501,17 @@ struct PerformanceView: View {
         if pan < -0.05 { return "\(Int(abs(pan * 100).rounded()))% E" }
         if pan > 0.05 { return "\(Int((pan * 100).rounded()))% D" }
         return "Centro"
+    }
+
+    private func saveScene() {
+        if model.saveCurrentPerformanceScene(named: sceneName) { sceneName = "" }
+    }
+
+    private func loadPartSettings(_ selectedPart: PerformancePart) {
+        let setting = model.performancePartSetting(for: selectedPart.target)
+        volume = setting.volume
+        expression = setting.expression
+        pan = setting.pan
     }
 }
 

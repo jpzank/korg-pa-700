@@ -122,6 +122,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var pendingAuditionSoundID: String?
     @Published private(set) var auditionMessage = "Escolha um timbre para ouvir"
     @Published private(set) var auditionExperimentURL: URL?
+    @Published private(set) var performanceScenes: [PerformanceScene] = []
+    @Published private(set) var performanceKeyboardSetEntryID: String?
+    @Published private(set) var performanceStyleID: String?
+    @Published private(set) var performanceVariation = 1
+    @Published private(set) var performancePartSettings: [KeyboardPartTarget: PerformanceScenePart] = Dictionary(
+        uniqueKeysWithValues: PerformanceScene.defaultParts().map { ($0.target, $0) }
+    )
 
     let profile: InstrumentProfile
     let driver: PA700Driver
@@ -156,6 +163,13 @@ final class AppModel: ObservableObject {
     var styleSelectionOperational: Bool { profile.mappings["styleSelection"]?.status == .verified }
     var keyboardSetLibraryEntries: [KeyboardSetLibraryEntry] { driver.keyboardSetLibraryCatalog.keyboardSets }
     var keyboardSetLibrarySelectionOperational: Bool { profile.mappings["keyboardSetLibrarySelection"]?.status == .verified }
+    var currentPerformanceSummary: String {
+        let keyboardSet = performanceKeyboardSetEntryID.flatMap { id in keyboardSetLibraryEntries.first(where: { $0.id == id })?.displayName }
+        let style = performanceStyleID.flatMap { id in arrangerStyles.first(where: { $0.id == id })?.displayName }
+        return [keyboardSet.map { "Keyboard Set: \($0)" }, style.map { "Style: \($0)" }, "Variação \(performanceVariation)"]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
     var hasBatchMappingSession: Bool { batchCollector != nil }
     var latestBatchSound: BatchSoundEntry? { batchSoundEntries.last }
     var activeBatchScreen: BatchSoundScreenCapture? { batchScreenCaptures.last(where: \.isOpen) }
@@ -304,6 +318,7 @@ final class AppModel: ObservableObject {
         } catch { status = "CoreMIDI indisponível"; lastError = error.localizedDescription }
         restoreLatestVerification()
         restoreLatestBatchCatalog()
+        restorePerformanceScenes()
     }
 
     func connect() {
@@ -1065,6 +1080,7 @@ final class AppModel: ObservableObject {
     func setPartVolume(_ target: KeyboardPartTarget, level: Double, partName: String) {
         do {
             try transport?.sendScheduled(driver.compile(.setPartVolume(target: target, level: level)))
+            updatePerformancePart(target) { $0.volume = level }
             status = "Volume de \(partName): \(Int((level * 100).rounded()))%"
             performanceStatus = status
         } catch { fail(error) }
@@ -1073,6 +1089,7 @@ final class AppModel: ObservableObject {
     func setPartExpression(_ target: KeyboardPartTarget, level: Double, partName: String) {
         do {
             try transport?.sendScheduled(driver.compile(.setPartExpression(target: target, level: level)))
+            updatePerformancePart(target) { $0.expression = level }
             status = "Expressão de \(partName): \(Int((level * 100).rounded()))%"
             performanceStatus = status
         } catch { fail(error) }
@@ -1081,6 +1098,7 @@ final class AppModel: ObservableObject {
     func setPartPan(_ target: KeyboardPartTarget, position: Double, partName: String) {
         do {
             try transport?.sendScheduled(driver.compile(.setPartPan(target: target, position: position)))
+            updatePerformancePart(target) { $0.pan = position }
             let description = position < -0.05 ? "\(Int(abs(position * 100).rounded()))% esquerda" : (position > 0.05 ? "\(Int((position * 100).rounded()))% direita" : "centro")
             status = "Panorama de \(partName): \(description)"
             performanceStatus = status
@@ -1101,6 +1119,7 @@ final class AppModel: ObservableObject {
                 throw ArrangerLabError.invalidValue("preset verificado não encontrado")
             }
             try transport?.sendScheduled(driver.compile(.selectDevicePreset(target: target, presetID: presetID)))
+            updatePerformancePart(target) { $0.presetID = presetID }
             status = "\(preset.displayName) selecionado em \(partName)"
             performanceStatus = status
         } catch { fail(error) }
@@ -1111,6 +1130,7 @@ final class AppModel: ObservableObject {
         guard variations.indices.contains(number - 1) else { return }
         do {
             try transport?.sendScheduled(driver.compile(.selectArrangerElement(variations[number - 1])))
+            performanceVariation = number
             status = "Variação \(number) selecionada"
             performanceStatus = status
         } catch { fail(error) }
@@ -1122,6 +1142,7 @@ final class AppModel: ObservableObject {
                 .selectArrangerStyle(styleID: style.id),
                 allowDraft: !styleSelectionOperational
             ))
+            performanceStyleID = style.id
             status = "Style \(style.displayName) selecionado · \(style.address)"
             performanceStatus = status
         } catch { fail(error) }
@@ -1133,7 +1154,89 @@ final class AppModel: ObservableObject {
                 .selectKeyboardSetLibraryEntry(entryID: entry.id),
                 allowDraft: !keyboardSetLibrarySelectionOperational
             ))
+            performanceKeyboardSetEntryID = entry.id
+            for target in Array(performancePartSettings.keys) {
+                updatePerformancePart(target) { $0.presetID = nil }
+            }
             status = "Keyboard Set selecionado · \(entry.displayName) · \(entry.address)"
+            performanceStatus = status
+        } catch { fail(error) }
+    }
+
+    func performancePartSetting(for target: KeyboardPartTarget) -> PerformanceScenePart {
+        performancePartSettings[target] ?? .init(target: target)
+    }
+
+    func performanceSceneSummary(_ scene: PerformanceScene) -> String {
+        let keyboardSet = scene.keyboardSetEntryID.flatMap { id in keyboardSetLibraryEntries.first(where: { $0.id == id })?.displayName }
+        let style = scene.styleID.flatMap { id in arrangerStyles.first(where: { $0.id == id })?.displayName }
+        return [keyboardSet, style, "Variação \(scene.variation)"].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    @discardableResult
+    func saveCurrentPerformanceScene(named rawName: String) -> Bool {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            performanceStatus = "Digite um nome para a cena"
+            return false
+        }
+        do {
+            let now = Date()
+            let existingIndex = performanceScenes.firstIndex { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }
+            let existing = existingIndex.map { performanceScenes[$0] }
+            let orderedParts = PerformanceScene.defaultParts().map { defaultPart in
+                performancePartSettings[defaultPart.target] ?? defaultPart
+            }
+            let scene = PerformanceScene(
+                id: existing?.id ?? UUID(),
+                name: name,
+                keyboardSetEntryID: performanceKeyboardSetEntryID,
+                styleID: performanceStyleID,
+                variation: performanceVariation,
+                parts: orderedParts,
+                createdAt: existing?.createdAt ?? now,
+                updatedAt: now
+            )
+            var updated = performanceScenes
+            if let existingIndex { updated[existingIndex] = scene } else { updated.append(scene) }
+            updated.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            try persistPerformanceScenes(updated)
+            performanceScenes = updated
+            performanceStatus = existing == nil ? "Cena \(name) salva" : "Cena \(name) atualizada"
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
+    }
+
+    func applyPerformanceScene(_ scene: PerformanceScene) {
+        do {
+            var scheduled: [ScheduledMIDIMessage] = []
+            var baseOffset: UInt64 = 0
+            for action in try scene.actions() {
+                let compiled = try driver.compile(action, allowDraft: false)
+                scheduled.append(contentsOf: compiled.map {
+                    .init(offsetNanoseconds: baseOffset + $0.offsetNanoseconds, message: $0.message, mappingID: $0.mappingID)
+                })
+                baseOffset += 25_000_000
+            }
+            try transport?.sendScheduled(scheduled)
+            performanceKeyboardSetEntryID = scene.keyboardSetEntryID
+            performanceStyleID = scene.styleID
+            performanceVariation = scene.variation
+            performancePartSettings = Dictionary(uniqueKeysWithValues: scene.parts.map { ($0.target, $0) })
+            status = "Cena \(scene.name) aplicada"
+            performanceStatus = status
+        } catch { fail(error) }
+    }
+
+    func deletePerformanceScene(_ scene: PerformanceScene) {
+        do {
+            let updated = performanceScenes.filter { $0.id != scene.id }
+            try persistPerformanceScenes(updated)
+            performanceScenes = updated
+            performanceStatus = "Cena \(scene.name) excluída"
         } catch { fail(error) }
     }
 
@@ -2055,6 +2158,31 @@ final class AppModel: ObservableObject {
             break
         }
     }
+
+    private func updatePerformancePart(_ target: KeyboardPartTarget, update: (inout PerformanceScenePart) -> Void) {
+        var setting = performancePartSettings[target] ?? .init(target: target)
+        update(&setting)
+        performancePartSettings[target] = setting
+    }
+
+    private func performanceSceneURL() throws -> URL {
+        try ArrLabPackage.applicationSupportDirectory()
+            .appendingPathComponent("Scenes", isDirectory: true)
+            .appendingPathComponent("scenes.json")
+    }
+
+    private func persistPerformanceScenes(_ scenes: [PerformanceScene]) throws {
+        try PerformanceSceneStore.save(scenes, to: performanceSceneURL())
+    }
+
+    private func restorePerformanceScenes() {
+        do {
+            performanceScenes = try PerformanceSceneStore.load(from: performanceSceneURL())
+        } catch {
+            lastError = "Cenas não puderam ser carregadas: \(error.localizedDescription)"
+        }
+    }
+
     private func restoreLatestVerification() {
         do {
             let directory = try ArrLabPackage.applicationSupportDirectory()
