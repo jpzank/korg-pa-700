@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 1,
+  "id": "korg.pa700.fw-1.5.0",
+  "manufacturer": "Korg",
+  "model": "PA700",
+  "firmware": "1.5.0",
+  "identitySignatures": [{
+    "manufacturer": 66,
+    "family": [96, 0],
+    "model": [93, 0],
+    "responsePrefix": [240, 126, 127, 6, 2, 66, 96, 0, 93, 0]
+  }],
+  "aliases": {
+    "Upper1": { "zone": "right", "layer": 1 },
+    "Right1": { "zone": "right", "layer": 1 },
+    "right1": { "zone": "right", "layer": 1 },
+    "Upper2": { "zone": "right", "layer": 2 },
+    "right2": { "zone": "right", "layer": 2 },
+    "Upper3": { "zone": "right", "layer": 3 },
+    "right3": { "zone": "right", "layer": 3 },
+    "Lower": { "zone": "left", "layer": 1 },
+    "left1": { "zone": "left", "layer": 1 }
+  },
+  "requiredConfiguration": [
+    "Create MIDI Preset ArrangerLab in the first empty slot; do not overwrite presets",
+    "Channels 1/2/3 = Upper 1/2/3, channel 4 = Lower, channel 16 = Control",
+    "Allow required CC, PC and only known SysEx",
+    "For the partDamper verification, select Sound mode with the ArrangerLab preset so channel 1 routes directly to Upper 1",
+    "Use External USB clock only during the arranger Start/Stop experiment; restore Internal afterward"
+  ],
+  "channels": { "right1": 1, "right2": 2, "right3": 3, "left1": 4, "control": 16 },
+  "mappings": {
+    "identity": {
+      "id": "identity", "status": "Verified", "template": "F0 7E 7F 06 01 F7",
+      "evidence": [{
+        "kind": "raw-midi", "firmware": "1.5.0",
+        "bytes": [240, 126, 127, 6, 2, 66, 96, 0, 93, 0, 1, 5, 0, 0, 247],
+        "note": "Captured from Pa700 KEYBOARD after universal identity inquiry to Pa700 SOUND",
+        "capturedAt": "2026-07-14"
+      }]
+    },
+    "partVolume": {
+      "id": "partVolume", "status": "Verified", "template": "Bn 07 vv",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 7, 32],
+          "note": "Outgoing CC7 on configured channel 1 at normalized level 0.25",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 7, 64],
+          "note": "Outgoing CC7 on configured channel 1 at normalized level 0.50",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 7, 95],
+          "note": "Outgoing CC7 on configured channel 1 at normalized level 0.75",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "ArrangerLab preset physically confirmed. RMS -52.23, -47.27, -43.38 dBFS; 8.85 dB total and strictly increasing. User confirmed audible change. Canonical evidence: Experiment-2026-07-15T13-44-05Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "partExpression": {
+      "id": "partExpression", "status": "Verified", "template": "Bn 0B vv",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": [176, 11, 32],
+          "note": "PA700 User Manual v1.5 page 850 documents Expression as CC11 relative to the current CC7 volume",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 11, 32],
+          "note": "Outgoing CC11 on configured channel 1 at normalized level 0.25",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 11, 64],
+          "note": "Outgoing CC11 on configured channel 1 at normalized level 0.50",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 11, 95],
+          "note": "Outgoing CC11 on configured channel 1 at normalized level 0.75",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "ArrangerLab preset physically confirmed. With CC7 fixed at 75%, RMS -62.46, -59.90, -54.72 dBFS; 7.75 dB total and strictly increasing. User confirmed the 25% level was audibly very low. Canonical evidence: Part-Expression-2026-07-16T00-37-03Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "partPan": {
+      "id": "partPan", "status": "Verified", "template": "Bn 0A vv",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": [176, 10, 0],
+          "note": "PA700 User Manual v1.5 pages 433 and 881 document CC10 Pan Pot: 0 or 1 far left, 64 oscillator center, 127 far right",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 10, 0],
+          "note": "Outgoing CC10 on configured channel 1 at far left",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 10, 64],
+          "note": "Outgoing CC10 on configured channel 1 at center",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 10, 127],
+          "note": "Outgoing CC10 on configured channel 1 at far right",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "ArrangerLab preset and PA700 identity physically confirmed. User confirmed center, left and right stereo positions; the app restored center after every clip. Mono microphone RMS -51.44, -50.16 and -50.02 dBFS is retained as an audit trail, not directional proof. Canonical evidence: Part-Pan-2026-07-16T00-50-15Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "partDamper": {
+      "id": "partDamper", "status": "Verified", "template": "Bn 40 vv",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": [176, 64, 0],
+          "note": "PA700 User Manual v1.5 pages 230 and 292 document Damper (Hold 1) as CC64",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 64, 0],
+          "note": "Outgoing CC64 OFF on configured channel 1 before and after the comparison",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 64, 127],
+          "note": "Outgoing CC64 ON on configured channel 1 before the sustained note",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "manual-confirmation", "firmware": "1.5.0", "bytes": null,
+          "note": "With PA700 in Sound mode and MIDI preset 14 ArrangerLab, channel 1 mapped directly to Upper 1, the user confirmed the dry first note and the sustained second note. Damper was restored OFF. The physical damper jack was disconnected. Canonical evidence: Part-Damper-2026-07-16T02-36-54Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "devicePreset": {
+      "id": "devicePreset", "status": "Verified", "template": "Bn 00 msb; Bn 20 lsb; Cn pc",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 0, 121],
+          "note": "Classic Piano A1 and A2 Bank Select MSB captured from Upper1 channel 1",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 32, 4],
+          "note": "Classic Piano A1 and A2 Bank Select LSB captured from Upper1 channel 1",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [192, 0],
+          "note": "Classic Piano A1 and A2 Program Change captured from Upper1 channel 1",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "User confirmed Classic Piano. A1/A2 both 121.4.0; contrast Jimmy Organ 121.13.18. Averaged spectral distances: A1-A2 0.078398, A1-B 0.386705, A2-B 0.417488. Canonical evidence: Preset-ABA-2026-07-15T17-01-13Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 32, 3],
+          "note": "Grand Piano A1 and A2 Bank Select LSB captured from Upper1 channel 1; CC0=121 and PC=0 completed both canonical selections",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "User confirmed Grand Piano. A1/A2 both 121.3.0; contrast Jimmy Organ 121.13.18. Spectral distances: A1-A2 0.1674, A1-B 0.2887, A2-B 0.1831. Canonical evidence: Preset-ABA-2026-07-16T04-47-08Z.arrlab in Application Support; the earlier marginal Draft remains preserved.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "styleSelection": {
+      "id": "styleSelection", "status": "Verified", "template": "Control: Bn 00 msb; Bn 20 lsb; Cn pc",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": null,
+          "note": "Korg PA700 User Manual v1.5 Musical Resources pages 942-947 lists all 379 factory Styles and their exact CC00, CC32 and PC values on the special Control channel.",
+          "capturedAt": "2026-07-16"
+        },
+        {
+          "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [191, 0, 0, 191, 32, 6, 207, 2],
+          "note": "Arranger Lab sent Bossa Nova as CC0=0, CC32=6, PC=2 on configured Control channel 16. The user physically confirmed that Style selection and rhythms work on the PA700.",
+          "capturedAt": "2026-07-17"
+        }
+      ]
+    },
+    "keyboardSetLibrarySelection": {
+      "id": "keyboardSetLibrarySelection", "status": "Verified", "template": "Control: Bn 00 msb; Bn 20 lsb; Cn pc",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": null,
+          "note": "Korg PA700 User Manual v1.5 Musical Resources pages 948-952 lists all 298 factory Keyboard Sets and their exact CC00, CC32 and PC values on the special Control channel.",
+          "capturedAt": "2026-07-17"
+        },
+        {
+          "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [191, 0, 16, 191, 32, 1, 207, 0],
+          "note": "Arranger Lab sent Jimmy Organ as CC0=16, CC32=1, PC=0 on configured Control channel 16. The user physically confirmed that Jimmy Organ appeared on the PA700 display.",
+          "capturedAt": "2026-07-17"
+        }
+      ]
+    },
+    "arrangerTransport": {
+      "id": "arrangerTransport", "status": "Verified", "template": "24 PPQN F8 + FA/FC",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [250],
+          "note": "One Start FA followed by 2010 Clock F8 messages at 120 BPM; PA700 Arranger physically confirmed started in Style Play with Clock Source External USB",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [252],
+          "note": "Stop FC plus Panic produced three FC, 32 All Notes Off and 32 All Sound Off events; PA700 Arranger physically confirmed stopped",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "41.91-second mono 48 kHz WAV captured. User confirmed Start, Stop and restoration of Clock Source Internal. Canonical evidence: Arranger-Transport-2026-07-15T17-27-58Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "midiClock": {
+      "id": "midiClock", "status": "Verified", "template": "FA/FB/FC transport; F8 at 24 PPQN by the transport scheduler",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [248],
+          "note": "The verified Arranger transport experiment emitted 2010 MIDI Clock F8 pulses at 120 BPM after Start FA",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "PA700 physically followed External USB clock; the user confirmed Start and Stop, and Clock Source was restored to Internal. Canonical evidence: Arranger-Transport-2026-07-15T17-27-58Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "songBook": {
+      "id": "songBook", "status": "Verified", "template": "Control: Bn 63 02; Bn 62 40; Bn 06 hh; Bn 26 ll",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [191, 99, 2],
+          "note": "SongBook NRPN initialization on configured Control channel 16; followed by BF 62 40",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [191, 6, 90],
+          "note": "SongBook 9000 Data Entry MSB 90; followed by BF 26 00",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "manual-and-photo", "firmware": "1.5.0", "bytes": null,
+          "note": "User confirmed Style Play and supplied a panel photo showing SBook: ArrangerLab Te... after remote selection. Canonical evidence: SongBook-9000-2026-07-15T18-06-22Z.arrlab in Application Support.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "arrangerElement.80": { "id": "arrangerElement.80", "status": "Verified", "template": "Control: Cn 50", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 80], "note": "PA700 User Manual v1.5 page 884: Intro 1", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 80], "note": "CF 50 lit the physical Intro 1 indicator, but two early start attempts were inconclusive.", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 80], "note": "Controlled retest: Stop + Panic, CF 50, then verified CF 67 Start. User heard Intro 1 before the Variation and confirmed playback.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.81": { "id": "arrangerElement.81", "status": "Verified", "template": "Control: Cn 51", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 81], "note": "PA700 User Manual v1.5 page 884: Intro 2", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 81], "note": "With the ArrangerLab MIDI Preset active and arranger stopped, CF 51 lit Intro 2. A verified CF 67 Start then played the intro before the Variation; user confirmed selection and playback.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.82": { "id": "arrangerElement.82", "status": "Verified", "template": "Control: Cn 52", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 82], "note": "PA700 User Manual v1.5 pages 58 and 884: Intro 3 / Count In", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 82], "note": "With the arranger physically confirmed stopped and the ArrangerLab MIDI Preset active, CF 52 lit the Intro 3 / Count In indicator. A subsequent CF 67 produced one audible count-in measure before Variation 1; user physically confirmed both selection and playback.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.83": { "id": "arrangerElement.83", "status": "Verified", "template": "Control: Cn 53", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 83], "note": "PA700 User Manual v1.5 page 884: Variation 1", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 83], "note": "CF 53 selected Variation 1; user physically confirmed the Variation 1 panel indication with ArrangerLab preset selected", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.84": { "id": "arrangerElement.84", "status": "Verified", "template": "Control: Cn 54", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 84], "note": "PA700 User Manual v1.5 page 884: Variation 2", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 84], "note": "With the persisted ArrangerLab MIDI Preset active and the USB session reconnected and identity-checked, CF 54 lit the physical Variation 2 indicator; user confirmed the panel state.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.85": { "id": "arrangerElement.85", "status": "Verified", "template": "Control: Cn 55", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 85], "note": "PA700 User Manual v1.5 page 884: Variation 3", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 85], "note": "With the persisted ArrangerLab MIDI Preset active and the USB session reconnected and identity-checked, CF 55 lit the physical Variation 3 indicator; user confirmed the panel state.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.86": { "id": "arrangerElement.86", "status": "Verified", "template": "Control: Cn 56", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 86], "note": "PA700 User Manual v1.5 page 884: Variation 4", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 86], "note": "With the persisted ArrangerLab MIDI Preset active and the USB session reconnected and identity-checked, CF 56 lit the physical Variation 4 indicator; user confirmed the panel state.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.87": { "id": "arrangerElement.87", "status": "Verified", "template": "Control: Cn 57", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 87], "note": "PA700 User Manual v1.5 page 884: Fill 1", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 87], "note": "CF 57 armed the Fill while stopped; during internal-clock playback it produced an audible Fill and returned to the Variation. User confirmed playback.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.88": { "id": "arrangerElement.88", "status": "Verified", "template": "Control: Cn 58", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 88], "note": "PA700 User Manual v1.5 page 884: Fill 2", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 88], "note": "CF 58 produced an audible Fill during internal-clock playback; user confirmed the musical transition.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.89": { "id": "arrangerElement.89", "status": "Verified", "template": "Control: Cn 59", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 89], "note": "PA700 User Manual v1.5 page 884: Fill 3", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 89], "note": "CF 59 produced an audible Fill during internal-clock playback; user confirmed the musical transition.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.90": { "id": "arrangerElement.90", "status": "Verified", "template": "Control: Cn 5A", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 90], "note": "PA700 User Manual v1.5 page 884: Fill 4", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 90], "note": "CF 5A produced an audible Fill during internal-clock playback; user confirmed the musical transition.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.91": { "id": "arrangerElement.91", "status": "Verified", "template": "Control: Cn 5B", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 91], "note": "PA700 User Manual v1.5 page 884: Break", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 91], "note": "CF 5B produced an audible Break during internal-clock playback and the rhythm resumed; user confirmed the pause and return.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.92": { "id": "arrangerElement.92", "status": "Verified", "template": "Control: Cn 5C", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 92], "note": "PA700 User Manual v1.5 page 884: Ending 1", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 92], "note": "CF 5C played Ending 1 during internal-clock playback and stopped the arranger automatically; user confirmed both behavior and stop.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.93": { "id": "arrangerElement.93", "status": "Verified", "template": "Control: Cn 5D", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 93], "note": "PA700 User Manual v1.5 page 884: Ending 2", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 93], "note": "CF 5D played Ending 2 during internal-clock playback and stopped the arranger automatically; user confirmed the distinct ending and stop.", "capturedAt": "2026-07-15" }] },
+    "arrangerElement.94": { "id": "arrangerElement.94", "status": "Verified", "template": "Control: Cn 5E", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 94], "note": "PA700 User Manual v1.5 page 884: Ending 3", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 94], "note": "CF 5E played Ending 3 during internal-clock playback and stopped the arranger automatically; user confirmed the ending and stop.", "capturedAt": "2026-07-15" }] },
+    "keyboardSet": {
+      "id": "keyboardSet", "status": "Verified", "template": "Control: Cn 40..43",
+      "evidence": [
+        {
+          "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 64],
+          "note": "PA700 User Manual v1.5 page 885 documents Control-channel PC 64-67 for Keyboard Set 1-4 after a Style or SongBook selection",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi-and-photo", "firmware": "1.5.0", "bytes": [207, 65],
+          "note": "CF 41 selected SongBook Keyboard Set 2; user photo physically confirmed Kbd2 and displayed name Organ",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "raw-midi-and-photo", "firmware": "1.5.0", "bytes": [207, 67],
+          "note": "CF 43 selected SongBook Keyboard Set 4; user photo physically confirmed Kbd4 and displayed name Harmonica",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    "arrangerControl.95": {
+      "id": "arrangerControl.95", "status": "Verified", "template": "Control: Cn 5F",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 95], "note": "PA700 User Manual v1.5 page 884: Fade In/Out", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 95], "note": "With Brush Ballad and internal clock, CF 5F while stopped started a gradual Fade In; a second CF 5F during playback produced a gradual Fade Out and automatic stop; user physically confirmed both", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.96": {
+      "id": "arrangerControl.96", "status": "Verified", "template": "Control: Cn 60",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 96], "note": "PA700 User Manual v1.5 page 884: Style to Kbd Set", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 96], "note": "Three successive CF 60 sends cycled the physical STYLE TO KBD SET indicator from off to steady on to blinking and back to off; user confirmed every transition", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.97": {
+      "id": "arrangerControl.97", "status": "Verified", "template": "Control: Cn 61",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 97], "note": "PA700 User Manual v1.5 page 884: Auto Fill", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 97], "note": "Successive CF 61 sends turned the physical AUTO FILL indicator off and back on; user confirmed both states", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.98": {
+      "id": "arrangerControl.98", "status": "Verified", "template": "Control: Cn 62",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 98], "note": "PA700 User Manual v1.5 page 884: Memory", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 98], "note": "Successive CF 62 sends established MEMORY on and then off through its physical indicator; user confirmed both states", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.99": {
+      "id": "arrangerControl.99", "status": "Verified", "template": "Control: Cn 63",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 99], "note": "PA700 User Manual v1.5 pages 199 and 884: Bass Inversion", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 99], "note": "In Style Play > Split, successive CF 63 sends checked and unchecked the Bass Inversion control; user physically confirmed both states", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.100": {
+      "id": "arrangerControl.100", "status": "Verified", "template": "Control: Cn 64",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 100], "note": "PA700 User Manual v1.5 pages 66 and 884: Manual Bass", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 100], "note": "CF 64 left MANUAL BASS off without an active keyboard split; after the physical SPLIT indicator was on, successive CF 64 sends turned MANUAL BASS on and off; user confirmed the prerequisite and both states", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.101": {
+      "id": "arrangerControl.101", "status": "Verified", "template": "Control: Cn 65",
+      "evidence": [
+        { "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 101], "note": "PA700 User Manual v1.5 page 884: Tempo Lock", "capturedAt": "2026-07-15" },
+        { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 101], "note": "Successive CF 65 sends turned the physical TEMPO LOCK indicator on and off; user confirmed both states", "capturedAt": "2026-07-15" }
+      ]
+    },
+    "arrangerControl.103": { "id": "arrangerControl.103", "status": "Verified", "template": "Control: Cn 67", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 103], "note": "PA700 User Manual v1.5 page 884: Arranger Start/Stop", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 103], "note": "First CF 67 started Brush Ballad at internal 73 BPM; second CF 67 stopped it; user physically confirmed both and Panic followed", "capturedAt": "2026-07-15" }] },
+    "arrangerControl.104": { "id": "arrangerControl.104", "status": "Verified", "template": "Control: Cn 68", "evidence": [{ "kind": "official-documentation", "firmware": "1.5.0", "bytes": [207, 104], "note": "PA700 User Manual v1.5 page 884: Player Play/Stop", "capturedAt": "2026-07-15" }, { "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [207, 104], "note": "With Song Play and the internal DISK song Late 1 selected, the first CF 68 started Player playback and the second CF 68 stopped it; user physically confirmed both transitions", "capturedAt": "2026-07-15" }] }
+  },
+  "presets": [
+    {
+      "id": "grand-piano",
+      "displayName": "Grand Piano",
+      "bankMSB": 121,
+      "bankLSB": 3,
+      "program": 0,
+      "status": "Verified",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 0, 121],
+          "note": "A1 and A2 matched on Upper1 channel 1; followed by CC32=3 and PC=0",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "Grand Piano displayed-name confirmation and passing A-B-A spectral evidence in Preset-ABA-2026-07-16T04-47-08Z.arrlab. After rebuilding the app with the promoted profile, the simple Tocar page sent 121.3.0 and the PA700 remained on Grand Piano; the user physically confirmed the displayed result.",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    {
+      "id": "classic-piano",
+      "displayName": "Classic Piano",
+      "bankMSB": 121,
+      "bankLSB": 4,
+      "program": 0,
+      "status": "Verified",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 0, 121],
+          "note": "A1 and A2 matched on Upper1 channel 1; followed by CC32=4 and PC=0",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "Classic Piano displayed-name confirmation and passing A-B-A spectral evidence",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    },
+    {
+      "id": "jimmy-organ",
+      "displayName": "Jimmy Organ",
+      "bankMSB": 121,
+      "bankLSB": 13,
+      "program": 18,
+      "status": "Verified",
+      "evidence": [
+        {
+          "kind": "raw-midi", "firmware": "1.5.0", "bytes": [176, 0, 121],
+          "note": "A1 and A2 matched on Upper1 channel 1; followed by CC32=13 and PC=18",
+          "capturedAt": "2026-07-15"
+        },
+        {
+          "kind": "audio-and-manual", "firmware": "1.5.0", "bytes": null,
+          "note": "Jimmy Organ displayed-name confirmation, passing A-B-A spectral evidence in Preset-ABA-Jimmy-Organ-Verified-2026-07-16T03-51-36Z.arrlab, and final Classic Piano to Jimmy Organ selection through the simple Tocar page physically confirmed",
+          "capturedAt": "2026-07-15"
+        }
+      ]
+    }
+  ]
+}
