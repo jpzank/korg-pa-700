@@ -7,14 +7,52 @@ struct ArrangerLabApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
-        WindowGroup("Arranger Lab") { RootView().environmentObject(model).frame(minWidth: 1_040, minHeight: 680) }
+        WindowGroup("Show", id: "show") {
+            ShowView()
+                .environmentObject(model)
+                .frame(minWidth: 1_040, minHeight: 680)
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.terminate() }
+        }
             .defaultSize(width: 1_220, height: 780)
-            .commands { CommandGroup(after: .appInfo) { Button("Panic") { model.panic() }.keyboardShortcut(".", modifiers: [.command, .shift]) } }
+            .commands { ArrangerLabCommands(model: model) }
             .onChange(of: scenePhase) { _, phase in if phase == .background { model.panic() } }
+
+        Window("Preparar show", id: "prepare-show") {
+            ShowPreparationView()
+                .environmentObject(model)
+                .frame(minWidth: 1_080, minHeight: 720)
+        }
+            .defaultSize(width: 1_180, height: 820)
+
+        Window("Laboratório", id: "laboratory") {
+            LaboratoryRootView()
+                .environmentObject(model)
+                .frame(minWidth: 1_040, minHeight: 680)
+        }
+            .defaultSize(width: 1_220, height: 780)
     }
 }
 
-struct RootView: View {
+private struct ArrangerLabCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    let model: AppModel
+
+    var body: some Commands {
+        CommandMenu("Arranger Lab") {
+            Button("Abrir Show") { openWindow(id: "show") }
+                .keyboardShortcut("1", modifiers: [.command])
+            Button("Preparar show") { openWindow(id: "prepare-show") }
+                .keyboardShortcut("2", modifiers: [.command])
+            Button("Abrir Laboratório") { openWindow(id: "laboratory") }
+                .keyboardShortcut("3", modifiers: [.command])
+            Divider()
+            Button("Panic") { model.panic() }
+                .keyboardShortcut(".", modifiers: [.command, .shift])
+        }
+    }
+}
+
+struct LaboratoryRootView: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         VStack(spacing: 0) {
@@ -41,7 +79,6 @@ struct RootView: View {
         }
         .tint(LabTheme.signal)
         .alert("Arranger Lab", isPresented: Binding(get: { model.lastError != nil }, set: { if !$0 { model.lastError = nil } })) { Button("OK") { model.lastError = nil } } message: { Text(model.lastError ?? "") }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.terminate() }
     }
 }
 

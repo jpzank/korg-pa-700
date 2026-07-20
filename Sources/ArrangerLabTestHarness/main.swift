@@ -149,6 +149,325 @@ func run() throws {
     invalidSetList.items.append(firstSetListItem)
     do { try invalidSetList.validate(); throw HarnessFailure(description: "duplicate set list item ID accepted") }
     catch ArrangerLabError.invalidValue { passed += 1; print("PASS  duplicate set list item ID rejected") }
+    let showPreset = ShowPreset(
+        songTitle: "Abertura",
+        songBookNumber: 4_273,
+        transposeSemitones: -2,
+        parts: [
+            .init(
+                part: .upper1,
+                displayName: "Shape of you",
+                soundID: "ch1-121-64-1",
+                soundLibrary: "User"
+            ),
+            .init(part: .upper2, displayName: "Strings"),
+            .init(part: .upper3, displayName: "Desligado", isEnabled: false),
+            .init(part: .lower, displayName: "Acoustic Bass")
+        ],
+        effectsSummary: "Reverb curto",
+        notes: "Entrada após a contagem",
+        originalKey: "G",
+        source: .init(
+            catalogID: "teste",
+            catalogSongID: "abertura",
+            documentName: "show.pdf",
+            startPage: 2,
+            endPage: 3,
+            sourceURL: "https://example.com/repertorio"
+        ),
+        chartLines: [
+            .init(kind: .section, text: "[Refrão]"),
+            .init(kind: .chords, text: "G D Em C"),
+            .init(kind: .lyrics, text: "Linha de teste")
+        ],
+        readerSettings: .init(showChords: true, fontScale: 1.15),
+        confirmedAt: sceneDate,
+        createdAt: sceneDate,
+        updatedAt: sceneDate
+    )
+    try showPreset.validate()
+    try check(showPreset.isConfirmed, "show preset exposes physical confirmation readiness")
+    let showPresetURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-show-presets.json")
+    defer { try? FileManager.default.removeItem(at: showPresetURL) }
+    try ShowPresetStore.save([showPreset], to: showPresetURL)
+    let loadedShowPresets = try ShowPresetStore.load(from: showPresetURL)
+    try check(loadedShowPresets == [showPreset], "show preset schema v2 JSON round trip includes chart and source")
+    try check(loadedShowPresets[0].source?.sourceURL == "https://example.com/repertorio", "show preset preserves optional web source metadata")
+    try check(
+        loadedShowPresets[0].parts[0].soundID == "ch1-121-64-1"
+            && loadedShowPresets[0].parts[0].soundLibrary == "User",
+        "show preset preserves selected User sound catalogue reference"
+    )
+    var invalidShowPreset = showPreset
+    invalidShowPreset.songBookNumber = 10_000
+    do { try invalidShowPreset.validate(); throw HarnessFailure(description: "out-of-range show SongBook number accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  show preset rejects SongBook outside 0...9999") }
+    invalidShowPreset = showPreset
+    invalidShowPreset.transposeSemitones = 13
+    do { try invalidShowPreset.validate(); throw HarnessFailure(description: "out-of-range show transpose accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  show preset rejects transpose outside -12...12") }
+    invalidShowPreset = showPreset
+    invalidShowPreset.parts.removeLast()
+    do { try invalidShowPreset.validate(); throw HarnessFailure(description: "show preset accepted missing Lower part") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  show preset requires four exact keyboard parts") }
+    var importedDraft = showPreset
+    importedDraft.songBookNumber = nil
+    importedDraft.confirmedAt = nil
+    try importedDraft.validate()
+    try check(!importedDraft.isConfirmed, "show preset accepts an imported draft without SongBook number")
+    importedDraft.confirmedAt = sceneDate
+    do { try importedDraft.validate(); throw HarnessFailure(description: "confirmed preset accepted without SongBook number") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  confirmed show preset requires a SongBook number") }
+
+    let chartSource = "# [Refrão]\n> G D Em C\nLinha de teste\n"
+    let parsedChart = ShowChartLine.parseEditorText(chartSource)
+    try check(parsedChart.map(\.kind) == [.section, .chords, .lyrics, .space], "show chart editor parses section, chords, lyrics and space")
+    try check(ShowChartLine.editorText(from: parsedChart) == chartSource, "show chart editor text round trip")
+    try check(ShowMusicTheory.transposedKey("G", by: 2) == "A", "show key calculator resolves the sounding major key")
+    try check(ShowMusicTheory.transposedKey("F#m", by: -2) == "Em", "show key calculator preserves minor mode")
+    try check(ShowMusicTheory.transposedKey("Bb", by: 2) == "C", "show key calculator preserves flat spelling preference")
+    try check(
+        ShowMusicTheory.transposeChordLine("C G/B Am F", by: 2) == "D A/C# Bm G",
+        "show chord transposer updates roots and slash bass notes"
+    )
+    try check(ShowMusicTheory.isChordLine("D7(4/9) C7M A/C# F#m"), "show PDF parser recognizes extended chord lines")
+    try check(!ShowMusicTheory.isChordLine("Em todo caso perde o medo"), "show PDF parser does not classify lyric text as chords")
+    let transposedChart = ShowMusicTheory.transposeChart(parsedChart, by: 2)
+    try check(
+        transposedChart[1].text == "A E F#m D" && transposedChart[2].text == parsedChart[2].text,
+        "show chart transposition changes chords without changing lyrics"
+    )
+    let importedPDFPreset = try ShowPDFTextParser.makePreset(
+        pageTexts: [
+            """
+            Minha Música
+            Tom: G
+            [Intro] G D Em C
+            G D Em C
+            Esta é a primeira linha
+            """,
+            """
+            [Refrão]
+            C G/B Am
+            Esta é a segunda página
+            """
+        ],
+        sourceFileName: "minha-musica.pdf",
+        sourceFingerprint: "fingerprint-teste"
+    )
+    try check(
+        importedPDFPreset.songTitle == "Minha Música"
+            && importedPDFPreset.originalKey == "G"
+            && importedPDFPreset.source?.documentName == "minha-musica.pdf"
+            && importedPDFPreset.source?.endPage == 2,
+        "disposable PDF import extracts title, key and page metadata"
+    )
+    try check(
+        importedPDFPreset.chartLines.contains(where: { $0.kind == .chords && $0.text == "G D Em C" })
+            && importedPDFPreset.chartLines.contains(where: { $0.kind == .lyrics && $0.text == "Esta é a primeira linha" }),
+        "disposable PDF import separates chords from lyrics"
+    )
+
+    let legacyShowPresetURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-legacy-show-presets.json")
+    defer { try? FileManager.default.removeItem(at: legacyShowPresetURL) }
+    let legacyShowPresetJSON = """
+    {
+      "schemaVersion": 1,
+      "presets": [{
+        "id": "00000000-0000-4000-8000-000000000001",
+        "songTitle": "Preset legado",
+        "songBookNumber": 77,
+        "transposeSemitones": 0,
+        "parts": [
+          {"part":"Upper 1","displayName":"Piano","isEnabled":true},
+          {"part":"Upper 2","displayName":"Desligado","isEnabled":false},
+          {"part":"Upper 3","displayName":"Desligado","isEnabled":false},
+          {"part":"Lower","displayName":"Desligado","isEnabled":false}
+        ],
+        "effectsSummary": "",
+        "notes": "",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-01T00:00:00Z"
+      }]
+    }
+    """
+    try Data(legacyShowPresetJSON.utf8).write(to: legacyShowPresetURL, options: .atomic)
+    let migratedLegacyPresets = try ShowPresetStore.load(from: legacyShowPresetURL)
+    try check(
+        migratedLegacyPresets.count == 1
+            && migratedLegacyPresets[0].songBookNumber == 77
+            && migratedLegacyPresets[0].chartLines.isEmpty
+            && migratedLegacyPresets[0].source == nil,
+        "show preset schema v1 loads with schema v2 defaults"
+    )
+
+    let botecoCatalog = try BundledShowCatalog.botecoJul3()
+    try check(botecoCatalog.entries.count == 57, "Boteco Jul3 catalog contains exactly 57 songs")
+    try check(
+        botecoCatalog.entries.first?.songTitle == "Querendo Te Amar"
+            && botecoCatalog.entries.last?.songTitle == "Flor",
+        "Boteco Jul3 catalog preserves PDF running order"
+    )
+    let multiPageSongs = botecoCatalog.entries.filter { $0.startPage != $0.endPage }
+    try check(
+        multiPageSongs.map(\.songTitle) == ["Convite de Casamento", "Evidências", "Sinônimos"]
+            && multiPageSongs.map { $0.endPage - $0.startPage } == [1, 1, 1],
+        "Boteco Jul3 catalog preserves the three two-page songs"
+    )
+    try check(
+        botecoCatalog.entries.allSatisfy { !$0.originalKey.isEmpty && !$0.chartLines.isEmpty },
+        "Boteco Jul3 catalog has a key and editable chart for every song"
+    )
+    let firstCatalogMerge = botecoCatalog.merging(presets: [], setLists: [], now: sceneDate)
+    try check(
+        firstCatalogMerge.presets.count == 57
+            && firstCatalogMerge.importedCount == 57
+            && firstCatalogMerge.setLists.count == 1
+            && firstCatalogMerge.setLists[0].items.count == 57,
+        "first Boteco import creates 57 drafts and the complete set list"
+    )
+    try check(firstCatalogMerge.presets.allSatisfy { !$0.isConfirmed && $0.songBookNumber == nil }, "Boteco import keeps all songs blocked as drafts")
+    let repeatedCatalogMerge = botecoCatalog.merging(
+        presets: firstCatalogMerge.presets,
+        setLists: firstCatalogMerge.setLists,
+        now: sceneDate.addingTimeInterval(60)
+    )
+    try check(
+        repeatedCatalogMerge.presets == firstCatalogMerge.presets
+            && repeatedCatalogMerge.setLists == firstCatalogMerge.setLists
+            && repeatedCatalogMerge.importedCount == 0,
+        "Boteco reimport is idempotent"
+    )
+    var editedCatalogPresets = firstCatalogMerge.presets
+    editedCatalogPresets[0].songBookNumber = 123
+    editedCatalogPresets[0].notes = "Entrada depois da fala"
+    editedCatalogPresets[0].chartLines[0].text = "Edição do músico"
+    let preservedCatalogMerge = botecoCatalog.merging(
+        presets: editedCatalogPresets,
+        setLists: firstCatalogMerge.setLists,
+        now: sceneDate.addingTimeInterval(120)
+    )
+    try check(preservedCatalogMerge.presets[0] == editedCatalogPresets[0], "Boteco reimport preserves preset configuration and chart edits")
+    var incompleteCatalogSetLists = firstCatalogMerge.setLists
+    incompleteCatalogSetLists[0].items.removeFirst()
+    let restoredCatalogSetListMerge = botecoCatalog.merging(
+        presets: firstCatalogMerge.presets,
+        setLists: incompleteCatalogSetLists,
+        now: sceneDate.addingTimeInterval(180)
+    )
+    try check(restoredCatalogSetListMerge.setLists[0].items.count == 57, "manual Boteco reimport restores a missing set-list song")
+
+    let showboatCatalog = try BundledShowCatalog.showboatJul23()
+    let expectedShowboatTitles = [
+        "Pra Sempre Com Você", "Chora, Me Liga", "Pode Chorar", "Propaganda",
+        "Perdoou Nada (Part. Jorge & Mateus)", "Barulho do Foguete",
+        "Ilusão de Ótica (part. Ana Castela)", "5 Regras", "Briga Feia",
+        "Vidinha de Balada", "Gosta de Rua", "Mala dos Porta-Mala", "Sinais",
+        "Você Não Sabe o Que É Amor", "Te Vivo", "Aí Já Era", "O Que É Que Tem?",
+        "A Maior Saudade", "Água Com Açúcar", "Cuida Bem Dela", "Tubarões",
+        "Homem de Família", "Nosso Santo Bateu", "Evidências", "Seu Astral",
+        "Amo Noite e Dia"
+    ]
+    let expectedShowboatKeys = [
+        "G#m", "C", "C", "D", "Cm", "G#m", "B", "C#m", "Bb", "D", "F#", "G", "C",
+        "F#", "D", "Em", "G", "B", "Eb", "Am", "Ab", "E", "C", "E", "D", "C#m"
+    ]
+    try check(showboatCatalog.entries.count == 26, "Showboat Jul 23 catalog contains exactly 26 songs")
+    try check(showboatCatalog.entries.map(\.songTitle) == expectedShowboatTitles, "Showboat catalog preserves the goJam running order")
+    try check(showboatCatalog.entries.map(\.originalKey) == expectedShowboatKeys, "Showboat catalog preserves every goJam key")
+    try check(
+        showboatCatalog.sourceURL == "https://gojam.fm/caio-e-matheus/setlists/showboat-jul-23"
+            && showboatCatalog.entries.allSatisfy { $0.artist?.isEmpty == false },
+        "Showboat catalog preserves web provenance and artist metadata"
+    )
+    try check(
+        showboatCatalog.entries.allSatisfy { entry in
+            entry.chartLines.contains(where: { $0.kind == .lyrics })
+                && entry.chartLines.contains(where: { $0.kind == .chords })
+                && entry.chartLines.allSatisfy { !$0.text.contains("|") }
+        },
+        "Showboat catalog has optimized editable lyrics and chords without guitar-tab rows"
+    )
+    let combinedCatalogMerge = showboatCatalog.merging(
+        presets: firstCatalogMerge.presets,
+        setLists: firstCatalogMerge.setLists,
+        now: sceneDate.addingTimeInterval(240)
+    )
+    try check(
+        combinedCatalogMerge.presets.count == 83
+            && combinedCatalogMerge.importedCount == 26
+            && combinedCatalogMerge.setLists.count == 2
+            && combinedCatalogMerge.setLists.first(where: { $0.sourceCatalogID == showboatCatalog.catalogID })?.items.count == 26,
+        "Showboat import creates 26 independent drafts and its complete set list"
+    )
+    var editedShowboatPresets = combinedCatalogMerge.presets
+    guard let firstShowboatIndex = editedShowboatPresets.firstIndex(where: {
+        $0.source?.catalogID == showboatCatalog.catalogID
+    }) else {
+        throw HarnessFailure(description: "Showboat preset missing after import")
+    }
+    editedShowboatPresets[firstShowboatIndex].originalKey = "Am"
+    editedShowboatPresets[firstShowboatIndex].transposeSemitones = -2
+    editedShowboatPresets[firstShowboatIndex].chartLines[0].text = "Edição local"
+    let repeatedShowboatMerge = showboatCatalog.merging(
+        presets: editedShowboatPresets,
+        setLists: combinedCatalogMerge.setLists,
+        now: sceneDate.addingTimeInterval(300)
+    )
+    try check(
+        repeatedShowboatMerge.presets[firstShowboatIndex] == editedShowboatPresets[firstShowboatIndex]
+            && repeatedShowboatMerge.importedCount == 0,
+        "Showboat reimport preserves tone, transpose and chart edits"
+    )
+    let showSetList = ShowSetList(
+        name: "Sexta-feira",
+        items: [.init(presetID: showPreset.id), .init(presetID: showPreset.id)],
+        createdAt: sceneDate,
+        updatedAt: sceneDate
+    )
+    try showSetList.validate()
+    try check(showSetList.items.map(\.presetID) == [showPreset.id, showPreset.id], "show set list supports repeating a preset")
+    let showSetListURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-show-setlists.json")
+    defer { try? FileManager.default.removeItem(at: showSetListURL) }
+    try ShowSetListStore.save([showSetList], to: showSetListURL)
+    let loadedShowSetLists = try ShowSetListStore.load(from: showSetListURL)
+    try check(loadedShowSetLists == [showSetList], "show set list JSON round trip")
+    let legacyShowSetListURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString)-legacy-show-setlists.json")
+    defer { try? FileManager.default.removeItem(at: legacyShowSetListURL) }
+    let legacyShowSetListJSON = """
+    {
+      "schemaVersion": 1,
+      "setLists": [{
+        "id": "00000000-0000-4000-8000-000000000011",
+        "name": "Repertório legado",
+        "items": [{
+          "id": "00000000-0000-4000-8000-000000000012",
+          "presetID": "00000000-0000-4000-8000-000000000001"
+        }],
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-01T00:00:00Z"
+      }]
+    }
+    """
+    try Data(legacyShowSetListJSON.utf8).write(to: legacyShowSetListURL, options: .atomic)
+    let migratedLegacySetLists = try ShowSetListStore.load(from: legacyShowSetListURL)
+    try check(
+        migratedLegacySetLists.count == 1 && migratedLegacySetLists[0].sourceCatalogID == nil,
+        "show set list schema v1 loads with schema v2 defaults"
+    )
+    var changedOperationalReference = showPreset
+    changedOperationalReference.songBookNumber = 4_274
+    try check(!changedOperationalReference.hasSameOperationalReference(as: showPreset), "show preset detects operational changes that require reconfirmation")
+    var changedChartOnly = showPreset
+    changedChartOnly.chartLines[2].text = "Letra corrigida"
+    try check(changedChartOnly.hasSameOperationalReference(as: showPreset), "chart edits do not require PA700 reconfirmation")
+    let showSelection = try driver.compile(.selectSongBookEntry(number: showPreset.songBookNumber!), allowDraft: false)
+    try check(showSelection.map(\.message) == [
+        .controlChange(channel: 15, controller: 99, value: 2),
+        .controlChange(channel: 15, controller: 98, value: 64),
+        .controlChange(channel: 15, controller: 6, value: 42),
+        .controlChange(channel: 15, controller: 38, value: 73)
+    ], "show preset applies only the verified SongBook selection sequence")
     let volume = try driver.compile(.setPartVolume(target: target, level: 0.5), allowDraft: false)
     try check(volume.first?.message == .controlChange(channel: 0, controller: 7, value: 64), "Verified normalized volume compiles operationally")
     let expression = try driver.compile(.setPartExpression(target: target, level: 0.5), allowDraft: false)

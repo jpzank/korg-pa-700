@@ -12,12 +12,19 @@ if [[ -z "${SDKROOT:-}" ]] \
     && [[ -d "/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk" ]]; then
   export SDKROOT="/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk"
 fi
-export CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-$ROOT/.build/module-cache}"
-export SWIFTPM_MODULECACHE_OVERRIDE="${SWIFTPM_MODULECACHE_OVERRIDE:-$ROOT/.build/module-cache}"
+MODULE_CACHE_ROOT="${TMPDIR:-/tmp}/arrangerlab-swift-module-cache"
+BUILD_ROOT="${TMPDIR:-/tmp}/arrangerlab-swift-build"
+mkdir -p "$MODULE_CACHE_ROOT"
+export CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-$MODULE_CACHE_ROOT}"
+export SWIFTPM_MODULECACHE_OVERRIDE="${SWIFTPM_MODULECACHE_OVERRIDE:-$MODULE_CACHE_ROOT}"
 
 cd "$ROOT"
-swift build --disable-sandbox -c release --product ArrangerLabApp
-BIN_DIR="$(swift build --disable-sandbox -c release --show-bin-path)"
+# SwiftPM can leave removed resources inside a previously built resource bundle.
+# Clean the isolated scratch directory so the packaged app mirrors the current
+# resource manifest exactly (notably, source PDFs must never survive rebuilds).
+swift package --disable-sandbox --scratch-path "$BUILD_ROOT" clean
+swift build --disable-sandbox --scratch-path "$BUILD_ROOT" -c release --product ArrangerLabApp
+BIN_DIR="$(swift build --disable-sandbox --scratch-path "$BUILD_ROOT" -c release --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"

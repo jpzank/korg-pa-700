@@ -20,7 +20,7 @@ struct PerformanceIntentPreview: Equatable {
 @MainActor
 final class AppModel: ObservableObject {
     enum Section: String, CaseIterable, Identifiable {
-        case performance = "Tocar"
+        case performance = "Cenas antigas / Explorar"
         case batchMapping = "Mapear timbres"
         case guide = "Testes guiados"
         case connection = "Conexão avançada"
@@ -145,6 +145,14 @@ final class AppModel: ObservableObject {
     )
     @Published private(set) var performanceIntentPreview: PerformanceIntentPreview?
     @Published private(set) var performanceIntentStatus = "Nenhum MIDI será enviado antes da sua confirmação"
+    @Published private(set) var showPresets: [ShowPreset] = []
+    @Published private(set) var showSetLists: [ShowSetList] = []
+    @Published private(set) var activeShowSetListID: UUID?
+    @Published private(set) var activeShowPresetID: UUID?
+    @Published private(set) var activeShowSetListItemID: UUID?
+    @Published private(set) var pendingShowConfirmationID: UUID?
+    @Published private(set) var lastShowAppliedAt: Date?
+    @Published private(set) var showStatus = "Escolha uma música para começar"
 
     let profile: InstrumentProfile
     let driver: PA700Driver
@@ -173,8 +181,18 @@ final class AppModel: ObservableObject {
     private var auditionAudioEvidence: AudioEvidenceRecord?
     private var auditionAudioSourceURL: URL?
     private var auditionPartName = "Upper 1"
+    private let legacyBotecoImportVersionKey = "arrangerlab.botecoJul3ImportVersion"
+    private let showboatCatalogID = "showboat-jul-23-gojam"
 
     var connected: Bool { transport?.selectedDestination != nil }
+    var activeShowSetList: ShowSetList? {
+        guard let activeShowSetListID else { return nil }
+        return showSetLists.first { $0.id == activeShowSetListID }
+    }
+    var activeShowPreset: ShowPreset? {
+        guard let activeShowPresetID else { return nil }
+        return showPresets.first { $0.id == activeShowPresetID }
+    }
     var arrangerStyles: [ArrangerStyle] { driver.styleCatalog.styles }
     var styleSelectionOperational: Bool { profile.mappings["styleSelection"]?.status == .verified }
     var keyboardSetLibraryEntries: [KeyboardSetLibraryEntry] { driver.keyboardSetLibraryCatalog.keyboardSets }
@@ -310,6 +328,7 @@ final class AppModel: ObservableObject {
                     guard let self else { return }
                     self.sources = sources
                     self.destinations = destinations
+                    if !self.connected { self.clearActiveShowSelection() }
                     guard !self.connected,
                           let source = sources.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 KEYBOARD") }),
                           let destination = destinations.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 SOUND") }) else { return }
@@ -336,6 +355,7 @@ final class AppModel: ObservableObject {
         restoreLatestBatchCatalog()
         restorePerformanceScenes()
         restorePerformanceSetLists()
+        restoreShowPerformance()
     }
 
     func connect() {
@@ -343,6 +363,7 @@ final class AppModel: ObservableObject {
             try transport?.connect(sourceID: selectedSourceID, destinationID: selectedDestinationID)
             expert.expire()
             status = connected ? "Conectado" : "Desconectado"
+            if !connected { clearActiveShowSelection() }
             objectWillChange.send()
         } catch { fail(error) }
     }
@@ -365,10 +386,18 @@ final class AppModel: ObservableObject {
         endBatchScreenCapture(silently: true)
         isBatchMapping = false
         saveBatchCatalogSilently()
+        clearActiveShowSelection()
         expert.expire(); status = "Desconectado"; objectWillChange.send()
     }
 
-    func panic() { do { try transport?.panic(); status = "Panic enviado em 16 canais" } catch { fail(error) } }
+    func panic() {
+        do {
+            try transport?.panic()
+            clearActiveShowSelection()
+            status = "Panic enviado em 16 canais"
+            showStatus = "Panic enviado. Selecione novamente a música antes de tocar."
+        } catch { fail(error) }
+    }
 
     func startBatchMapping() {
         guard connected else { fail(ArrangerLabError.endpointUnavailable); return }
@@ -1406,6 +1435,306 @@ final class AppModel: ObservableObject {
         performanceScenes.first { $0.id == item.sceneID }
     }
 
+    @discardableResult
+    func saveShowPreset(_ candidate: ShowPreset) -> Bool {
+        do {
+            let now = Date()
+            let existingIndex = showPresets.firstIndex { $0.id == candidate.id }
+            let existing = existingIndex.map { showPresets[$0] }
+            let cleanedParts = candidate.parts.map {
+                ShowPresetPart(
+                    part: $0.part,
+                    displayName: $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    isEnabled: $0.isEnabled
+                )
+            }
+            var preset = ShowPreset(
+                id: candidate.id,
+                songTitle: candidate.songTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+                songBookNumber: candidate.songBookNumber,
+                transposeSemitones: candidate.transposeSemitones,
+                parts: cleanedParts,
+                effectsSummary: candidate.effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines),
+                notes: candidate.notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                originalKey: candidate.originalKey.trimmingCharacters(in: .whitespacesAndNewlines),
+                source: candidate.source,
+                chartLines: candidate.chartLines,
+                readerSettings: candidate.readerSettings,
+                confirmedAt: candidate.confirmedAt,
+                createdAt: existing?.createdAt ?? candidate.createdAt,
+                updatedAt: now
+            )
+            if let existing, !preset.hasSameOperationalReference(as: existing) {
+                preset.confirmedAt = nil
+                if pendingShowConfirmationID == preset.id { pendingShowConfirmationID = nil }
+                if activeShowPresetID == preset.id { clearActiveShowSelection() }
+            }
+            try preset.validate()
+            var updated = showPresets
+            if let existingIndex { updated[existingIndex] = preset } else { updated.append(preset) }
+            try persistShowPresets(updated)
+            showPresets = updated
+            showStatus = existing == nil ? "Preset de \(preset.songTitle) salvo" : "Preset de \(preset.songTitle) atualizado"
+            return true
+        } catch {
+            showStatus = "Não foi possível salvar o preset"
+            fail(error)
+            return false
+        }
+    }
+
+    func deleteShowPreset(_ preset: ShowPreset) {
+        do {
+            let updatedPresets = showPresets.filter { $0.id != preset.id }
+            let updatedSetLists = showSetLists.map { setList in
+                var copy = setList
+                copy.items.removeAll { $0.presetID == preset.id }
+                if copy.items != setList.items { copy.updatedAt = Date() }
+                return copy
+            }
+            try persistShowPresets(updatedPresets)
+            try persistShowSetLists(updatedSetLists)
+            showPresets = updatedPresets
+            showSetLists = updatedSetLists
+            if activeShowPresetID == preset.id { clearActiveShowSelection() }
+            if pendingShowConfirmationID == preset.id { pendingShowConfirmationID = nil }
+            showStatus = "Preset de \(preset.songTitle) excluído"
+        } catch { fail(error) }
+    }
+
+    @discardableResult
+    func testShowPreset(_ preset: ShowPreset) -> Bool {
+        guard connected else {
+            showStatus = "Conecte o PA700 para testar este preset"
+            return false
+        }
+        guard let songBookNumber = preset.songBookNumber else {
+            showStatus = "Defina o número SongBook antes de testar \(preset.songTitle)"
+            return false
+        }
+        do {
+            try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
+            pendingShowConfirmationID = preset.id
+            showStatus = "SongBook \(songBookNumber) enviado. Confira o PA700 e confirme o preset."
+            return true
+        } catch {
+            showStatus = "Falha ao testar \(preset.songTitle)"
+            fail(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func confirmShowPreset(_ preset: ShowPreset) -> Bool {
+        guard pendingShowConfirmationID == preset.id else {
+            showStatus = "Teste este preset no PA700 antes de confirmar"
+            return false
+        }
+        var confirmed = preset
+        confirmed.confirmedAt = Date()
+        guard saveShowPreset(confirmed) else { return false }
+        pendingShowConfirmationID = nil
+        showStatus = "Preset de \(confirmed.songTitle) confirmado no PA700"
+        return true
+    }
+
+    @discardableResult
+    func applyShowPreset(_ preset: ShowPreset, setListItemID: UUID? = nil) -> Bool {
+        guard preset.isConfirmed, let songBookNumber = preset.songBookNumber else {
+            showStatus = "\(preset.songTitle) ainda não foi confirmado no PA700"
+            return false
+        }
+        guard connected else {
+            clearActiveShowSelection()
+            showStatus = "PA700 desconectado. Reconecte antes de aplicar a música."
+            return false
+        }
+        do {
+            try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
+            activeShowPresetID = preset.id
+            activeShowSetListItemID = setListItemID
+            lastShowAppliedAt = Date()
+            showStatus = "\(preset.songTitle) aplicada · SongBook \(songBookNumber)"
+            status = showStatus
+            return true
+        } catch {
+            showStatus = "Falha ao aplicar \(preset.songTitle); a música ativa não mudou"
+            fail(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func createShowSetList(named rawName: String) -> Bool {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            showStatus = "Digite um nome para o repertório"
+            return false
+        }
+        guard !showSetLists.contains(where: { $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            showStatus = "Já existe um repertório chamado \(name)"
+            return false
+        }
+        do {
+            var updated = showSetLists
+            let setList = ShowSetList(name: name)
+            updated.append(setList)
+            updated.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            try persistShowSetLists(updated)
+            showSetLists = updated
+            if activeShowSetListID == nil { selectShowSetList(setList.id) }
+            showStatus = "Repertório \(name) criado"
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
+    }
+
+    func renameShowSetList(_ setList: ShowSetList, to rawName: String) {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { showStatus = "Digite um nome para o repertório"; return }
+        guard !showSetLists.contains(where: { $0.id != setList.id && $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame }) else {
+            showStatus = "Já existe um repertório chamado \(name)"
+            return
+        }
+        guard updateShowSetList(setList.id, update: { $0.name = name }) else { return }
+        showStatus = "Repertório renomeado para \(name)"
+    }
+
+    func addShowPreset(_ preset: ShowPreset, to setList: ShowSetList) {
+        guard updateShowSetList(setList.id, update: { $0.items.append(.init(presetID: preset.id)) }) else { return }
+        showStatus = "\(preset.songTitle) adicionada a \(setList.name)"
+    }
+
+    func removeShowSetListItem(_ item: ShowSetListItem, from setList: ShowSetList) {
+        guard updateShowSetList(setList.id, update: { $0.items.removeAll { $0.id == item.id } }) else { return }
+        if activeShowSetListItemID == item.id { clearActiveShowSelection() }
+        showStatus = "Música removida de \(setList.name)"
+    }
+
+    func moveShowSetListItem(_ item: ShowSetListItem, in setList: ShowSetList, offset: Int) {
+        guard offset == -1 || offset == 1,
+              let index = setList.items.firstIndex(where: { $0.id == item.id }) else { return }
+        let destination = index + offset
+        guard setList.items.indices.contains(destination) else { return }
+        guard updateShowSetList(setList.id, update: { $0.items.swapAt(index, destination) }) else { return }
+        showStatus = "Ordem de \(setList.name) atualizada"
+    }
+
+    func deleteShowSetList(_ setList: ShowSetList) {
+        do {
+            let updated = showSetLists.filter { $0.id != setList.id }
+            try persistShowSetLists(updated)
+            showSetLists = updated
+            if activeShowSetListID == setList.id {
+                selectShowSetList(updated.first?.id)
+                clearActiveShowSelection()
+            }
+            showStatus = "Repertório \(setList.name) excluído"
+        } catch { fail(error) }
+    }
+
+    func selectShowSetList(_ id: UUID?) {
+        activeShowSetListID = id.flatMap { candidate in showSetLists.contains(where: { $0.id == candidate }) ? candidate : nil }
+        if let activeShowSetListID {
+            UserDefaults.standard.set(activeShowSetListID.uuidString, forKey: "arrangerlab.activeShowSetListID")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "arrangerlab.activeShowSetListID")
+        }
+        clearActiveShowSelection()
+    }
+
+    func showPreset(for item: ShowSetListItem) -> ShowPreset? {
+        showPresets.first { $0.id == item.presetID }
+    }
+
+    @discardableResult
+    func importBundledShowCatalog() -> Bool {
+        do {
+            let catalog = try BundledShowCatalog.botecoJul3()
+            return try importBundledShowCatalog(catalog, activate: true)
+        } catch {
+            showStatus = "Não foi possível importar o repertório Boteco Jul3"
+            fail(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    func importShowboatJul23Catalog() -> Bool {
+        do {
+            let catalog = try BundledShowCatalog.showboatJul23()
+            return try importBundledShowCatalog(catalog, activate: true)
+        } catch {
+            showStatus = "Não foi possível importar o repertório Showboat Jul 23"
+            fail(error)
+            return false
+        }
+    }
+
+    func originalShowChart(for preset: ShowPreset) -> [ShowChartLine]? {
+        guard let source = preset.source,
+              let catalog = try? BundledShowCatalog.bundled(catalogID: source.catalogID) else { return nil }
+        let songID = source.catalogSongID
+        return catalog.entries.first(where: { $0.catalogSongID == songID })?.chartLines
+    }
+
+    @discardableResult
+    func importExtractedShowPresets(_ candidates: [ShowPreset]) -> [UUID] {
+        guard !candidates.isEmpty else { return [] }
+        do {
+            let existingSources = Set(showPresets.compactMap { preset in
+                preset.source.map { "\($0.catalogID):\($0.catalogSongID)" }
+            })
+            var seenSources = existingSources
+            var imported: [ShowPreset] = []
+            for var candidate in candidates {
+                let sourceKey = candidate.source.map { "\($0.catalogID):\($0.catalogSongID)" }
+                if let sourceKey, seenSources.contains(sourceKey) { continue }
+                candidate.confirmedAt = nil
+                try candidate.validate()
+                imported.append(candidate)
+                if let sourceKey { seenSources.insert(sourceKey) }
+            }
+            guard !imported.isEmpty else {
+                showStatus = "Os PDFs selecionados já foram importados; nenhum arquivo foi guardado"
+                return []
+            }
+
+            var updatedPresets = showPresets
+            updatedPresets.append(contentsOf: imported)
+            var updatedSetLists = showSetLists
+            let targetSetListID: UUID
+            if let activeShowSetListID,
+               updatedSetLists.contains(where: { $0.id == activeShowSetListID }) {
+                targetSetListID = activeShowSetListID
+            } else {
+                let setList = ShowSetList(name: "Músicas importadas")
+                updatedSetLists.append(setList)
+                targetSetListID = setList.id
+            }
+            if let index = updatedSetLists.firstIndex(where: { $0.id == targetSetListID }) {
+                updatedSetLists[index].items.append(contentsOf: imported.map { .init(presetID: $0.id) })
+                updatedSetLists[index].updatedAt = Date()
+            }
+
+            try persistShowPresets(updatedPresets)
+            try persistShowSetLists(updatedSetLists)
+            showPresets = updatedPresets
+            showSetLists = updatedSetLists
+            if activeShowSetListID == nil { selectShowSetList(targetSetListID) }
+            showStatus = imported.count == 1
+                ? "Cifra extraída do PDF; o arquivo original não foi guardado"
+                : "\(imported.count) cifras extraídas; os PDFs originais não foram guardados"
+            return imported.map(\.id)
+        } catch {
+            showStatus = "Não foi possível salvar as cifras extraídas"
+            fail(error)
+            return []
+        }
+    }
+
     func togglePerformanceArranger() {
         do {
             try transport?.sendScheduled(driver.compile(.triggerArrangerControl(.arrangerStartStop)))
@@ -2349,6 +2678,128 @@ final class AppModel: ObservableObject {
 
     private func persistPerformanceSetLists(_ setLists: [PerformanceSetList]) throws {
         try PerformanceSetListStore.save(setLists, to: performanceSetListURL())
+    }
+
+    private func showDirectory() throws -> URL {
+        try ArrLabPackage.applicationSupportDirectory().appendingPathComponent("Show", isDirectory: true)
+    }
+
+    private func showPresetURL() throws -> URL {
+        try showDirectory().appendingPathComponent("presets.json")
+    }
+
+    private func showSetListURL() throws -> URL {
+        try showDirectory().appendingPathComponent("setlists.json")
+    }
+
+    private func persistShowPresets(_ presets: [ShowPreset]) throws {
+        try ShowPresetStore.save(presets, to: showPresetURL())
+    }
+
+    private func persistShowSetLists(_ setLists: [ShowSetList]) throws {
+        try ShowSetListStore.save(setLists, to: showSetListURL())
+    }
+
+    @discardableResult
+    private func updateShowSetList(_ id: UUID, update: (inout ShowSetList) -> Void) -> Bool {
+        guard let index = showSetLists.firstIndex(where: { $0.id == id }) else { return false }
+        do {
+            var updated = showSetLists
+            update(&updated[index])
+            updated[index].updatedAt = Date()
+            try persistShowSetLists(updated)
+            showSetLists = updated
+            return true
+        } catch {
+            fail(error)
+            return false
+        }
+    }
+
+    private func restoreShowPerformance() {
+        do {
+            showPresets = try ShowPresetStore.load(from: showPresetURL())
+            showSetLists = try ShowSetListStore.load(from: showSetListURL())
+            var shouldActivateShowboat = false
+            var didChangeCatalogData = false
+            var importedCatalogNames: [String] = []
+            var catalogsToMarkImported: [BundledShowCatalog] = []
+            for catalog in try BundledShowCatalog.allBundled() {
+                let versionKey = bundledShowCatalogImportVersionKey(for: catalog)
+                guard UserDefaults.standard.integer(forKey: versionKey) < catalog.schemaVersion else { continue }
+                let merged = catalog.merging(presets: showPresets, setLists: showSetLists)
+                if merged.presets != showPresets || merged.setLists != showSetLists {
+                    showPresets = merged.presets
+                    showSetLists = merged.setLists
+                    didChangeCatalogData = true
+                    if merged.importedCount > 0 {
+                        importedCatalogNames.append("\(catalog.name) (\(merged.importedCount))")
+                    }
+                }
+                catalogsToMarkImported.append(catalog)
+                if catalog.catalogID == showboatCatalogID {
+                    shouldActivateShowboat = true
+                }
+            }
+            if didChangeCatalogData {
+                try persistShowPresets(showPresets)
+                try persistShowSetLists(showSetLists)
+            }
+            for catalog in catalogsToMarkImported {
+                UserDefaults.standard.set(catalog.schemaVersion, forKey: bundledShowCatalogImportVersionKey(for: catalog))
+                if catalog.catalogID == "boteco-jul3-gojam" {
+                    UserDefaults.standard.set(catalog.schemaVersion, forKey: legacyBotecoImportVersionKey)
+                }
+            }
+            if !importedCatalogNames.isEmpty {
+                showStatus = "Repertórios importados como rascunho: \(importedCatalogNames.joined(separator: ", "))"
+            }
+            let storedID = UserDefaults.standard.string(forKey: "arrangerlab.activeShowSetListID").flatMap(UUID.init(uuidString:))
+            let storedSetListID = storedID.flatMap { id in showSetLists.contains(where: { $0.id == id }) ? id : nil }
+            activeShowSetListID = (shouldActivateShowboat
+                ? showSetLists.first(where: { $0.sourceCatalogID == showboatCatalogID })?.id
+                : storedSetListID)
+                ?? showSetLists.first(where: { $0.sourceCatalogID == showboatCatalogID })?.id
+                ?? showSetLists.first?.id
+            if let activeShowSetListID {
+                UserDefaults.standard.set(activeShowSetListID.uuidString, forKey: "arrangerlab.activeShowSetListID")
+            }
+        } catch {
+            lastError = "Dados de show não puderam ser carregados: \(error.localizedDescription)"
+        }
+    }
+
+    private func bundledShowCatalogImportVersionKey(for catalog: BundledShowCatalog) -> String {
+        "arrangerlab.showCatalogImportVersion.\(catalog.catalogID)"
+    }
+
+    @discardableResult
+    private func importBundledShowCatalog(_ catalog: BundledShowCatalog, activate: Bool) throws -> Bool {
+        let merged = catalog.merging(presets: showPresets, setLists: showSetLists)
+        let changed = merged.presets != showPresets || merged.setLists != showSetLists
+        if changed {
+            try persistShowPresets(merged.presets)
+            try persistShowSetLists(merged.setLists)
+            showPresets = merged.presets
+            showSetLists = merged.setLists
+        }
+        if activate, let importedSetList = showSetLists.first(where: { $0.sourceCatalogID == catalog.catalogID }) {
+            selectShowSetList(importedSetList.id)
+        }
+        UserDefaults.standard.set(catalog.schemaVersion, forKey: bundledShowCatalogImportVersionKey(for: catalog))
+        if catalog.catalogID == "boteco-jul3-gojam" {
+            UserDefaults.standard.set(catalog.schemaVersion, forKey: legacyBotecoImportVersionKey)
+        }
+        showStatus = merged.importedCount > 0
+            ? "\(merged.importedCount) músicas de \(catalog.name) importadas como rascunho"
+            : "\(catalog.name) já está atualizado; suas edições foram preservadas"
+        return true
+    }
+
+    private func clearActiveShowSelection() {
+        activeShowPresetID = nil
+        activeShowSetListItemID = nil
+        lastShowAppliedAt = nil
     }
 
     @discardableResult
