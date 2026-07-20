@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "blockID": "showboat-jul-23-piano-block-a",
+  "parentCatalogID": "showboat-jul-23-gojam",
+  "name": "Showboat Jul 23 · Piano · Bloco A",
+  "setListID": "A23BA000-0000-4000-8000-000000000000",
+  "entries": [
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000001",
+      "catalogSongID": "04d371d1-ec4c-42e8-b5a8-650413be6bd4",
+      "songTitle": "Te Vivo",
+      "originalKey": "D",
+      "transposeSemitones": -3,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000002",
+      "catalogSongID": "e6562118-1736-421a-a776-6a2a43c98756",
+      "songTitle": "Aí Já Era",
+      "originalKey": "G",
+      "transposeSemitones": -2,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000003",
+      "catalogSongID": null,
+      "songTitle": "Pra Deixar Acontecer",
+      "originalKey": "G",
+      "transposeSemitones": 0,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000004",
+      "catalogSongID": "3f719b42-5530-46e1-bc59-33d26a397a2a",
+      "songTitle": "A Maior Saudade",
+      "originalKey": "Am",
+      "transposeSemitones": 4,
+      "upper1Sound": "Rhodes",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000005",
+      "catalogSongID": "035665da-bb1e-4270-a42e-a28deff796fd",
+      "songTitle": "Água Com Açúcar",
+      "originalKey": "C",
+      "transposeSemitones": 1,
+      "upper1Sound": "Rhodes",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000006",
+      "catalogSongID": "24cadde6-ca07-47a8-82b3-fec005a47540",
+      "songTitle": "Cuida Bem Dela",
+      "originalKey": "C",
+      "transposeSemitones": 0,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000007",
+      "catalogSongID": "93424dad-90ac-421a-a355-f74c272587c7",
+      "songTitle": "Tubarões",
+      "originalKey": "G",
+      "transposeSemitones": 0,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000008",
+      "catalogSongID": "03728458-669c-4b16-8ec7-f0de9ded698b",
+      "songTitle": "Homem de Família",
+      "originalKey": "C",
+      "transposeSemitones": 1,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-000000000009",
+      "catalogSongID": null,
+      "songTitle": "Medida Certa",
+      "originalKey": "C",
+      "transposeSemitones": 1,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    },
+    {
+      "presetID": "A23BA000-0000-4000-8000-00000000000A",
+      "catalogSongID": "7de6800c-7098-48d8-8114-ab81097f617f",
+      "songTitle": "Evidências",
+      "originalKey": "C",
+      "transposeSemitones": 0,
+      "upper1Sound": "Piano",
+      "soundLibrary": "USER · JPD"
+    }
+  ]
+}

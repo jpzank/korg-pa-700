@@ -411,7 +411,7 @@ public struct BundledShowCatalog: Codable, Equatable, Sendable {
             throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 catalog is missing")
         }
         let catalog = try decoder.decode(BundledShowCatalog.self, from: Data(contentsOf: url))
-        guard catalog.schemaVersion == 1, catalog.entries.count == 26 else {
+        guard catalog.schemaVersion == 2, catalog.entries.count == 26 else {
             throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 catalog is invalid")
         }
         return catalog

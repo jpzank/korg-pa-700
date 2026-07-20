@@ -253,10 +253,17 @@ struct ShowView: View {
                             Text(part.part.rawValue)
                                 .font(.caption.weight(.semibold))
                                 .frame(width: 60, alignment: .leading)
-                            Text(part.isEnabled ? (part.displayName.isEmpty ? "Não informado" : part.displayName) : "Desligado")
-                                .font(.callout)
-                                .foregroundStyle(part.isEnabled ? .primary : .secondary)
-                                .lineLimit(2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(part.isEnabled ? (part.displayName.isEmpty ? "Não informado" : part.displayName) : "Desligado")
+                                    .font(.callout)
+                                    .foregroundStyle(part.isEnabled ? .primary : .secondary)
+                                    .lineLimit(2)
+                                if part.isEnabled, let library = part.soundLibrary, !library.isEmpty {
+                                    Text(library)
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(LabTheme.signal)
+                                }
+                            }
                             Spacer(minLength: 0)
                         }
                     }

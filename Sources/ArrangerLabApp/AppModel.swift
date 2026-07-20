@@ -183,6 +183,7 @@ final class AppModel: ObservableObject {
     private var auditionPartName = "Upper 1"
     private let legacyBotecoImportVersionKey = "arrangerlab.botecoJul3ImportVersion"
     private let showboatCatalogID = "showboat-jul-23-gojam"
+    private let showboatPianoBlockID = "showboat-jul-23-piano-block-a"
 
     var connected: Bool { transport?.selectedDestination != nil }
     var activeShowSetList: ShowSetList? {
@@ -1445,7 +1446,9 @@ final class AppModel: ObservableObject {
                 ShowPresetPart(
                     part: $0.part,
                     displayName: $0.displayName.trimmingCharacters(in: .whitespacesAndNewlines),
-                    isEnabled: $0.isEnabled
+                    isEnabled: $0.isEnabled,
+                    soundID: $0.soundID,
+                    soundLibrary: $0.soundLibrary?.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
             }
             var preset = ShowPreset(
@@ -2721,9 +2724,11 @@ final class AppModel: ObservableObject {
             showPresets = try ShowPresetStore.load(from: showPresetURL())
             showSetLists = try ShowSetListStore.load(from: showSetListURL())
             var shouldActivateShowboat = false
+            var shouldActivateShowboatPianoBlock = false
             var didChangeCatalogData = false
             var importedCatalogNames: [String] = []
             var catalogsToMarkImported: [BundledShowCatalog] = []
+            var plansToMarkImported: [BundledShowBlockPlan] = []
             for catalog in try BundledShowCatalog.allBundled() {
                 let versionKey = bundledShowCatalogImportVersionKey(for: catalog)
                 guard UserDefaults.standard.integer(forKey: versionKey) < catalog.schemaVersion else { continue }
@@ -2741,6 +2746,25 @@ final class AppModel: ObservableObject {
                     shouldActivateShowboat = true
                 }
             }
+            for plan in try BundledShowBlockPlan.allBundled() {
+                let versionKey = bundledShowBlockImportVersionKey(for: plan)
+                guard UserDefaults.standard.integer(forKey: versionKey) < plan.schemaVersion else { continue }
+                let merged = plan.merging(
+                    presets: showPresets,
+                    setLists: showSetLists,
+                    applyOperationalDefaults: true
+                )
+                if merged.presets != showPresets || merged.setLists != showSetLists {
+                    showPresets = merged.presets
+                    showSetLists = merged.setLists
+                    didChangeCatalogData = true
+                    importedCatalogNames.append(plan.name)
+                }
+                plansToMarkImported.append(plan)
+                if plan.blockID == showboatPianoBlockID {
+                    shouldActivateShowboatPianoBlock = true
+                }
+            }
             if didChangeCatalogData {
                 try persistShowPresets(showPresets)
                 try persistShowSetLists(showSetLists)
@@ -2751,12 +2775,17 @@ final class AppModel: ObservableObject {
                     UserDefaults.standard.set(catalog.schemaVersion, forKey: legacyBotecoImportVersionKey)
                 }
             }
+            for plan in plansToMarkImported {
+                UserDefaults.standard.set(plan.schemaVersion, forKey: bundledShowBlockImportVersionKey(for: plan))
+            }
             if !importedCatalogNames.isEmpty {
                 showStatus = "Repertórios importados como rascunho: \(importedCatalogNames.joined(separator: ", "))"
             }
             let storedID = UserDefaults.standard.string(forKey: "arrangerlab.activeShowSetListID").flatMap(UUID.init(uuidString:))
             let storedSetListID = storedID.flatMap { id in showSetLists.contains(where: { $0.id == id }) ? id : nil }
-            activeShowSetListID = (shouldActivateShowboat
+            activeShowSetListID = (shouldActivateShowboatPianoBlock
+                ? showSetLists.first(where: { $0.sourceCatalogID == showboatPianoBlockID })?.id
+                : shouldActivateShowboat
                 ? showSetLists.first(where: { $0.sourceCatalogID == showboatCatalogID })?.id
                 : storedSetListID)
                 ?? showSetLists.first(where: { $0.sourceCatalogID == showboatCatalogID })?.id
@@ -2771,6 +2800,10 @@ final class AppModel: ObservableObject {
 
     private func bundledShowCatalogImportVersionKey(for catalog: BundledShowCatalog) -> String {
         "arrangerlab.showCatalogImportVersion.\(catalog.catalogID)"
+    }
+
+    private func bundledShowBlockImportVersionKey(for plan: BundledShowBlockPlan) -> String {
+        "arrangerlab.showBlockImportVersion.\(plan.blockID)"
     }
 
     @discardableResult

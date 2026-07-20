@@ -358,6 +358,7 @@ func run() throws {
     try check(restoredCatalogSetListMerge.setLists[0].items.count == 57, "manual Boteco reimport restores a missing set-list song")
 
     let showboatCatalog = try BundledShowCatalog.showboatJul23()
+    try check(showboatCatalog.schemaVersion == 2, "Showboat catalog schema includes the Jul 23 preparation update")
     let expectedShowboatTitles = [
         "Pra Sempre Com Você", "Chora, Me Liga", "Pode Chorar", "Propaganda",
         "Perdoou Nada (Part. Jorge & Mateus)", "Barulho do Foguete",
@@ -418,6 +419,63 @@ func run() throws {
         repeatedShowboatMerge.presets[firstShowboatIndex] == editedShowboatPresets[firstShowboatIndex]
             && repeatedShowboatMerge.importedCount == 0,
         "Showboat reimport preserves tone, transpose and chart edits"
+    )
+
+    let pianoBlockPlan = try BundledShowBlockPlan.showboatJul23PianoBlockA()
+    let preparedShowboat = pianoBlockPlan.merging(
+        presets: combinedCatalogMerge.presets,
+        setLists: combinedCatalogMerge.setLists,
+        applyOperationalDefaults: true,
+        now: sceneDate.addingTimeInterval(360)
+    )
+    guard let pianoBlock = preparedShowboat.setLists.first(where: {
+        $0.sourceCatalogID == pianoBlockPlan.blockID
+    }) else {
+        throw HarnessFailure(description: "Showboat Piano Block A set list missing")
+    }
+    let pianoBlockPresets = pianoBlock.items.compactMap { item in
+        preparedShowboat.presets.first(where: { $0.id == item.presetID })
+    }
+    let expectedPianoBlockTitles = [
+        "Te Vivo", "Aí Já Era", "Pra Deixar Acontecer", "A Maior Saudade", "Água Com Açúcar",
+        "Cuida Bem Dela", "Tubarões", "Homem de Família", "Medida Certa", "Evidências"
+    ]
+    let expectedPianoBlockKeys = ["D", "G", "G", "Am", "C", "C", "G", "C", "C", "C"]
+    let expectedPianoBlockTranspose = [-3, -2, 0, 4, 1, 0, 0, 1, 1, 0]
+    let expectedPianoBlockSounds = [
+        "Piano", "Piano", "Piano", "Rhodes", "Rhodes",
+        "Piano", "Piano", "Piano", "Piano", "Piano"
+    ]
+    try check(
+        pianoBlockPresets.map(\.songTitle) == expectedPianoBlockTitles
+            && pianoBlockPresets.map(\.originalKey) == expectedPianoBlockKeys
+            && pianoBlockPresets.map(\.transposeSemitones) == expectedPianoBlockTranspose,
+        "Showboat Piano Block A preserves the requested running order, keys and transpose values"
+    )
+    try check(
+        pianoBlockPresets.map { $0.parts.first(where: { $0.part == .upper1 })?.displayName ?? "" }
+            == expectedPianoBlockSounds
+            && pianoBlockPresets.allSatisfy {
+                $0.parts.first(where: { $0.part == .upper1 })?.soundLibrary == "USER · JPD"
+                    && $0.parts.filter { $0.part != .upper1 }.allSatisfy { !$0.isEnabled }
+            },
+        "Showboat Piano Block A references USER JPD on Upper 1 without inventing a MIDI address"
+    )
+    var locallyEditedBlock = preparedShowboat.presets
+    guard let teVivoIndex = locallyEditedBlock.firstIndex(where: { $0.songTitle == "Te Vivo" }) else {
+        throw HarnessFailure(description: "Te Vivo preset missing from Piano Block A")
+    }
+    locallyEditedBlock[teVivoIndex].transposeSemitones = -1
+    let nonDestructiveBlockMerge = pianoBlockPlan.merging(
+        presets: locallyEditedBlock,
+        setLists: preparedShowboat.setLists,
+        applyOperationalDefaults: false,
+        now: sceneDate.addingTimeInterval(420)
+    )
+    try check(
+        nonDestructiveBlockMerge.presets[teVivoIndex].transposeSemitones == -1
+            && nonDestructiveBlockMerge.importedCount == 0,
+        "Piano Block reimport preserves later local edits after the one-time preparation"
     )
     let showSetList = ShowSetList(
         name: "Sexta-feira",
