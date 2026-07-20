@@ -1652,6 +1652,10 @@ final class AppModel: ObservableObject {
         showPresets.first { $0.id == item.presetID }
     }
 
+    func openShowPresetForReading(_ preset: ShowPreset) {
+        showStatus = "\(preset.songTitle) aberta para leitura · não enviada ao PA700"
+    }
+
     @discardableResult
     func importBundledShowCatalog() -> Bool {
         do {

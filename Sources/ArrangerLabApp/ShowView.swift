@@ -8,6 +8,7 @@ struct ShowView: View {
     @AppStorage("arrangerlab.showReaderFontSize") private var readerFontSize = 23.0
     @AppStorage("arrangerlab.showReaderChords") private var showChords = true
     @State private var chartPositions: [UUID: Int] = [:]
+    @State private var readingItemID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,14 +32,17 @@ struct ShowView: View {
             Text(model.lastError ?? "")
         }
         .onAppear {
-            focusCurrentOrFirstItem()
+            selectCurrentOrFirstItem()
             loadReaderDefaults()
         }
-        .onChange(of: model.activeShowSetListID) { _, _ in focusCurrentOrFirstItem() }
+        .onChange(of: model.activeShowSetListID) { _, _ in selectCurrentOrFirstItem() }
         .onChange(of: model.activeShowSetListItemID) { _, newValue in
-            if let newValue { focusedItemID = newValue }
+            if let newValue {
+                focusedItemID = newValue
+                readingItemID = newValue
+            }
         }
-        .onChange(of: model.activeShowPresetID) { _, _ in loadReaderDefaults() }
+        .onChange(of: readingItemID) { _, _ in loadReaderDefaults() }
     }
 
     private func showContent(_ setList: ShowSetList) -> some View {
@@ -48,12 +52,12 @@ struct ShowView: View {
 
             Divider()
 
-            chartStage
+            chartStage(readingPreset(in: setList))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
 
-            activePresetPanel(setList)
+            presetPanel(setList, displayedPreset: readingPreset(in: setList))
                 .frame(width: 310)
         }
     }
@@ -116,8 +120,8 @@ struct ShowView: View {
             Divider()
 
             HStack(spacing: 7) {
-                Image(systemName: model.activeShowPresetID == nil ? "circle.dashed" : "checkmark.circle.fill")
-                    .foregroundStyle(model.activeShowPresetID == nil ? .secondary : LabTheme.verified)
+                Image(systemName: readingStatusIcon)
+                    .foregroundStyle(readingStatusColor)
                 Text(model.showStatus)
                     .font(.caption)
                     .lineLimit(2)
@@ -132,11 +136,18 @@ struct ShowView: View {
     private func showRow(index: Int, item: ShowSetListItem) -> some View {
         let preset = model.showPreset(for: item)
         let isActive = model.activeShowSetListItemID == item.id
+        let isReading = readingItemID == item.id
         let isReady = preset?.isConfirmed == true
 
         return Button {
             guard let preset else { return }
-            model.applyShowPreset(preset, setListItemID: item.id)
+            focusedItemID = item.id
+            readingItemID = item.id
+            if isReady {
+                model.applyShowPreset(preset, setListItemID: item.id)
+            } else {
+                model.openShowPresetForReading(preset)
+            }
         } label: {
             HStack(spacing: 11) {
                 Text(String(format: "%02d", index + 1))
@@ -152,7 +163,7 @@ struct ShowView: View {
                     HStack(spacing: 6) {
                         Text(songBookLabel(preset?.songBookNumber))
                         Text("·")
-                        Text(isReady ? "Pronta" : "Não pronta")
+                        Text(isReady ? "Pronta para tocar" : "Somente leitura")
                             .foregroundStyle(isReady ? Color.secondary : Color.orange)
                     }
                     .font(.caption.monospacedDigit())
@@ -170,28 +181,35 @@ struct ShowView: View {
 
                 Spacer(minLength: 4)
 
-                Image(systemName: isActive ? "checkmark.circle.fill" : (isReady ? "play.fill" : "lock.fill"))
-                    .foregroundStyle(isActive ? LabTheme.verified : (isReady && model.connected ? LabTheme.signal : Color.secondary))
+                Image(systemName: rowIcon(isActive: isActive, isReading: isReading, isReady: isReady))
+                    .foregroundStyle(rowIconColor(isActive: isActive, isReading: isReading, isReady: isReady))
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-            .background(isActive ? LabTheme.signal.opacity(0.17) : Color.clear)
+            .background(
+                isReading
+                    ? LabTheme.signal.opacity(0.17)
+                    : (isActive ? LabTheme.verified.opacity(0.10) : Color.clear)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .overlay(alignment: .bottom) { Divider().opacity(0.55) }
         .focused($focusedItemID, equals: item.id)
         .accessibilityLabel("\(index + 1), \(preset?.songTitle ?? "Preset indisponível")")
-        .accessibilityValue(isReady ? "Pronta para o show" : "Não pronta")
-        .accessibilityHint(isReady ? "Aplica esta música ao PA700 e abre a cifra" : "Teste e confirme este preset em Preparar show")
+        .accessibilityValue(isActive ? "Aplicada no PA700" : (isReady ? "Pronta para tocar" : "Somente leitura"))
+        .accessibilityHint(isReady
+            ? "Abre a letra e aplica esta música ao PA700"
+            : "Abre a letra e a cifra sem enviar nada ao PA700")
     }
 
-    private var chartStage: some View {
+    private func chartStage(_ preset: ShowPreset?) -> some View {
         Group {
-            if let preset = model.activeShowPreset {
+            if let preset {
                 ShowChartReader(
                     preset: preset,
+                    isApplied: isReadingApplied,
                     showChords: $showChords,
                     fontSize: $readerFontSize,
                     position: Binding(
@@ -204,9 +222,9 @@ struct ShowView: View {
                     Image(systemName: "music.note.list")
                         .font(.system(size: 42, weight: .light))
                         .foregroundStyle(.secondary)
-                    Text("Selecione uma música pronta")
+                    Text("Selecione uma música")
                         .font(.title2.weight(.semibold))
-                    Text("A cifra só muda depois que o SongBook é enviado com sucesso ao PA700.")
+                    Text("A letra e a cifra abrem sem enviar nada. Somente músicas prontas acionam o PA700.")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 460)
@@ -223,13 +241,13 @@ struct ShowView: View {
         .background(Color(red: 0.055, green: 0.060, blue: 0.063))
     }
 
-    private func activePresetPanel(_ setList: ShowSetList) -> some View {
+    private func presetPanel(_ setList: ShowSetList, displayedPreset: ShowPreset?) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("AGORA")
+            Text(displayedPreset.map { _ in isReadingApplied ? "NO PA700" : "EM LEITURA" } ?? "MÚSICA")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.secondary)
 
-            if let preset = model.activeShowPreset {
+            if let preset = displayedPreset {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(preset.songTitle)
                         .font(.title2.weight(.semibold))
@@ -243,6 +261,11 @@ struct ShowView: View {
                     Text("Mãos: \(preset.originalKey.isEmpty ? "—" : preset.originalKey)  ·  Soa: \(soundingKey(preset) ?? "—")")
                         .font(.callout.monospaced().weight(.semibold))
                         .foregroundStyle(.primary)
+                    if !isReadingApplied {
+                        Label("Não enviada ao PA700", systemImage: "doc.text")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 Divider()
@@ -272,7 +295,7 @@ struct ShowView: View {
                 detailBlock(title: "EFEITOS", value: preset.effectsSummary.isEmpty ? "Não informado" : preset.effectsSummary)
                 detailBlock(title: "NOTAS", value: preset.notes.isEmpty ? "Sem notas" : preset.notes)
             } else {
-                Text("Nenhuma música aplicada")
+                Text("Nenhuma música selecionada")
                     .font(.headline)
                     .foregroundStyle(.secondary)
             }
@@ -293,6 +316,22 @@ struct ShowView: View {
                     }
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                }
+            }
+
+            if let active = model.activeShowPreset,
+               !isReadingApplied {
+                Divider()
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("TOCANDO NO PA700")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(LabTheme.verified)
+                    Text(active.songTitle)
+                        .font(.headline)
+                        .lineLimit(2)
+                    Text("\(songBookLabel(active.songBookNumber)) · \(transposeText(active.transposeSemitones))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -334,18 +373,26 @@ struct ShowView: View {
     }
 
     private func nextPreset(in setList: ShowSetList) -> ShowPreset? {
-        guard let activeID = model.activeShowSetListItemID,
-              let index = setList.items.firstIndex(where: { $0.id == activeID }),
+        guard let referenceID = readingItemID ?? model.activeShowSetListItemID,
+              let index = setList.items.firstIndex(where: { $0.id == referenceID }),
               setList.items.indices.contains(index + 1) else { return nil }
         return model.showPreset(for: setList.items[index + 1])
     }
 
-    private func focusCurrentOrFirstItem() {
-        focusedItemID = model.activeShowSetListItemID ?? model.activeShowSetList?.items.first?.id
+    private func selectCurrentOrFirstItem() {
+        let itemID = model.activeShowSetListItemID ?? model.activeShowSetList?.items.first?.id
+        focusedItemID = itemID
+        readingItemID = itemID
+        if model.activeShowSetListItemID == nil,
+           let setList = model.activeShowSetList,
+           let preset = readingPreset(in: setList) {
+            model.openShowPresetForReading(preset)
+        }
     }
 
     private func loadReaderDefaults() {
-        guard let preset = model.activeShowPreset else { return }
+        guard let setList = model.activeShowSetList,
+              let preset = readingPreset(in: setList) else { return }
         showChords = preset.readerSettings.showChords
         readerFontSize = min(37, max(17, 23 * preset.readerSettings.fontScale))
     }
@@ -359,7 +406,45 @@ struct ShowView: View {
         case .down: nextIndex = min(setList.items.count - 1, currentIndex + 1)
         default: return
         }
-        focusedItemID = setList.items[nextIndex].id
+        let item = setList.items[nextIndex]
+        focusedItemID = item.id
+        readingItemID = item.id
+        if item.id != model.activeShowSetListItemID,
+           let preset = model.showPreset(for: item) {
+            model.openShowPresetForReading(preset)
+        }
+    }
+
+    private func readingPreset(in setList: ShowSetList) -> ShowPreset? {
+        guard let itemID = readingItemID ?? model.activeShowSetListItemID,
+              let item = setList.items.first(where: { $0.id == itemID }) else { return nil }
+        return model.showPreset(for: item)
+    }
+
+    private var readingStatusIcon: String {
+        guard readingItemID != nil else { return "circle.dashed" }
+        return readingItemID == model.activeShowSetListItemID ? "checkmark.circle.fill" : "doc.text.fill"
+    }
+
+    private var readingStatusColor: Color {
+        readingItemID == model.activeShowSetListItemID ? LabTheme.verified : LabTheme.signal
+    }
+
+    private var isReadingApplied: Bool {
+        guard let readingItemID else { return false }
+        return readingItemID == model.activeShowSetListItemID
+    }
+
+    private func rowIcon(isActive: Bool, isReading: Bool, isReady: Bool) -> String {
+        if isActive { return "checkmark.circle.fill" }
+        if isReading { return "doc.text.fill" }
+        return isReady ? "play.fill" : "doc.text"
+    }
+
+    private func rowIconColor(isActive: Bool, isReading: Bool, isReady: Bool) -> Color {
+        if isActive { return LabTheme.verified }
+        if isReading { return LabTheme.signal }
+        return isReady && model.connected ? LabTheme.signal : .secondary
     }
 
     private func songBookLabel(_ number: Int?) -> String {
@@ -381,6 +466,7 @@ struct ShowView: View {
 
 private struct ShowChartReader: View {
     let preset: ShowPreset
+    let isApplied: Bool
     @Binding var showChords: Bool
     @Binding var fontSize: Double
     @Binding var position: Int
@@ -394,9 +480,14 @@ private struct ShowChartReader: View {
             VStack(spacing: 12) {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(preset.songTitle)
-                            .font(.title2.weight(.semibold))
-                            .lineLimit(1)
+                        HStack(spacing: 9) {
+                            Text(preset.songTitle)
+                                .font(.title2.weight(.semibold))
+                                .lineLimit(1)
+                            Label(isApplied ? "NO PA700" : "SOMENTE LEITURA", systemImage: isApplied ? "checkmark.circle.fill" : "doc.text.fill")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(isApplied ? LabTheme.verified : .orange)
+                        }
                         if let source = preset.source {
                             Text(source.sourceURL == nil
                                 ? "Conteúdo extraído de \(source.documentName)"
