@@ -11,11 +11,18 @@ All notable changes to Arranger Lab are documented here.
 - Added the 57-song Boteco Jul3 repertoire, editable structured chord/lyric charts and idempotent first-run import without retaining the source PDF.
 - Added the 26-song Showboat Jul 23 goJam set list with source keys, artists and optimized editable lyrics/chords stored locally without a PDF or live-site dependency.
 - Added the 10-song Showboat Jul 23 Piano Block A with the requested order, keys, PA700 transpose values and USER JPD Piano/Rhodes operator references.
+- Added one-click direct show preparation: the Mac selects USER Style JPD, its Piano/Rhodes Keyboard Set and the song transpose without requiring SongBook.
 - Added disposable import of external text PDFs, chord-aware extraction and chart transposition.
 - Replaced free-text Upper/Lower fields with a searchable sound browser for captured User sounds and the complete Factory, Legacy and GM/XG libraries.
 - Added prominent live readouts for the key played by the hands, PA700 transpose and resulting sounding key.
 - Added a stage chart reader with chord visibility, per-song font defaults, manual scrolling and session position memory.
-- Separated chart reading from PA700 activation: drafts now open their lyrics and chords immediately, while only confirmed presets can send SongBook.
+- Added a full-screen performance focus with persistent draggable notes over the chart, large previous/next controls, explicit PA700 preparation, set progress and a locked annotation mode.
+- Separated chart reading from PA700 activation: drafts open their lyrics and chords immediately, while only operational presets send direct setup or SongBook.
+- Standardized the app on one restrained OKLCH-derived semantic palette, shared spacing/radius tokens and consistent lifecycle copy.
+- Made Show responsive by removing the redundant inspector on compact windows, preserved the reader anchor when chords are hidden and added keyboard movement for chart notes.
+- Made chart paging reliable while a repertoire row has keyboard focus, with Space to advance and Shift+Space to return.
+- Tuned focus mode for stage comfort with a separately saved larger type size, centered reading column, stronger next-song cue and larger paging controls with visible shortcuts.
+- Kept preparation save/test actions visible below the scrolling editor and made `Aplicar no PA700` the only transmission action in the Show reader.
 - Added separate preparation and laboratory windows, preserving all legacy scenes and test data without exposing them on stage.
 - Added schema v2 atomic storage with v1 migration, active repertoire persistence, draft blocking and physical confirmation before live use.
 

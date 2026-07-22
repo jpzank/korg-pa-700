@@ -8,6 +8,10 @@ APP="$ROOT/outputs/Arranger Lab.app"
 ARCHIVE_NAME="Arranger-Lab-$VERSION.zip"
 CHECKSUM_NAME="$ARCHIVE_NAME.sha256"
 
+cd "$ROOT"
+bash "$ROOT/scripts/test.sh"
+swift run --disable-sandbox ArrangerLabTestHarness
+
 "$ROOT/scripts/build-app.sh"
 
 cd "$ROOT/outputs"

@@ -30,6 +30,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$ROOT/Support/Info.plist" "$APP/Contents/Info.plist"
 cp "$BIN_DIR/ArrangerLabApp" "$APP/Contents/MacOS/Arranger Lab"
+cp "$ROOT/Support/ArrangerLab.icns" "$APP/Contents/Resources/ArrangerLab.icns"
 if [[ -d "$BIN_DIR/ArrangerLab_ArrangerLabCore.bundle" ]]; then
   cp -R "$BIN_DIR/ArrangerLab_ArrangerLabCore.bundle" "$APP/Contents/Resources/"
 fi

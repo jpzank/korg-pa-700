@@ -38,7 +38,8 @@ public struct ArrangerStyleCatalog: Codable, Equatable, Sendable {
     public func validate() throws {
         guard schemaVersion == 1 else { throw ArrangerLabError.invalidProfile("unsupported Style catalog schema") }
         guard model == "PA700", firmware == "1.5.0" else { throw ArrangerLabError.invalidProfile("Style catalog does not match PA700 firmware 1.5.0") }
-        guard styles.count == 379 else { throw ArrangerLabError.invalidProfile("expected 379 factory Styles, found \(styles.count)") }
+        let factoryStyles = styles.filter { $0.category != "User" }
+        guard factoryStyles.count == 379 else { throw ArrangerLabError.invalidProfile("expected 379 factory Styles, found \(factoryStyles.count)") }
         guard Set(styles.map(\.id)).count == styles.count else { throw ArrangerLabError.invalidProfile("Style IDs must be unique") }
         guard Set(styles.map(\.address)).count == styles.count else { throw ArrangerLabError.invalidProfile("Style MIDI addresses must be unique") }
     }

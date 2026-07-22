@@ -479,7 +479,7 @@ struct BatchMappingView: View {
                 }
                 .width(80)
                 TableColumn("Categoria") { entry in
-                    Text(entry.category ?? "—")
+                    Text(entry.category ?? "Sem categoria")
                         .foregroundStyle(.secondary)
                 }
                 .width(min: 85, ideal: 120)

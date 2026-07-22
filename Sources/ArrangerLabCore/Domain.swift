@@ -82,6 +82,7 @@ public enum InstrumentAction: Codable, Equatable, Sendable {
     case selectDevicePreset(target: KeyboardPartTarget, presetID: String)
     case selectArrangerStyle(styleID: String)
     case selectKeyboardSetLibraryEntry(entryID: String)
+    case setMasterTranspose(semitones: Int)
     case setTransport(domain: TransportDomain, state: TransportState)
     case selectSongBookEntry(number: Int)
     case selectArrangerElement(ArrangerElement)

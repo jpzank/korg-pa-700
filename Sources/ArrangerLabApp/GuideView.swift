@@ -159,7 +159,7 @@ struct GuideView: View {
                     Label("Mapping devicePreset Verified", systemImage: "checkmark.seal.fill").foregroundStyle(LabTheme.verified)
                     if !model.persistedPresetSummary.isEmpty { Text(model.persistedPresetSummary).font(.system(.body, design: .monospaced)) }
                     if !model.presetABADistances.isEmpty {
-                        Text("Distâncias: A1–A2 \(model.presetABADistances["A1-A2"] ?? 0, specifier: "%.4f")  •  A1–B \(model.presetABADistances["A1-B"] ?? 0, specifier: "%.4f")  •  A2–B \(model.presetABADistances["A2-B"] ?? 0, specifier: "%.4f")")
+                        Text("Distâncias: A1/A2 \(model.presetABADistances["A1-A2"] ?? 0, specifier: "%.4f")  •  A1/B \(model.presetABADistances["A1-B"] ?? 0, specifier: "%.4f")  •  A2/B \(model.presetABADistances["A2-B"] ?? 0, specifier: "%.4f")")
                             .font(.system(.caption, design: .monospaced))
                     }
                     if let url = model.presetExperimentURL { Text(url.path).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled) }
@@ -256,7 +256,7 @@ struct GuideView: View {
                 StepTitle(number: 9, title: "Selecione uma entrada do SongBook", detail: "O app envia NRPN e Data Entry no canal Control 16 para chamar a entrada dedicada 9000.", isComplete: complete(.songBook))
                 if model.songBookVerified {
                     Label("Mapping songBook Verified", systemImage: "checkmark.seal.fill").foregroundStyle(LabTheme.verified)
-                    Text("9000 — \(model.songBookDisplayedName.isEmpty ? "ArrangerLab Test" : model.songBookDisplayedName)")
+                    Text("9000 · \(model.songBookDisplayedName.isEmpty ? "ArrangerLab Test" : model.songBookDisplayedName)")
                         .font(.system(.body, design: .monospaced))
                     if let url = model.songBookExperimentURL {
                         Text(url.path).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)

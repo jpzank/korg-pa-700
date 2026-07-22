@@ -208,7 +208,7 @@ struct PerformanceView: View {
                             systemImage: model.styleSelectionOperational ? "checkmark.seal.fill" : "testtube.2"
                         )
                         .font(.caption)
-                        .foregroundStyle(model.styleSelectionOperational ? .green : .orange)
+                        .foregroundStyle(model.styleSelectionOperational ? LabTheme.verified : LabTheme.draft)
                     }
 
                     HStack(spacing: 10) {
@@ -314,7 +314,7 @@ struct PerformanceView: View {
                     Spacer()
                     Label("Somente ações Verified", systemImage: "checkmark.seal.fill")
                         .font(.caption)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(LabTheme.verified)
                 }
 
                 VStack(spacing: 0) {
@@ -386,7 +386,7 @@ struct PerformanceView: View {
                     systemImage: enabled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
                 )
                 .font(.callout)
-                .foregroundStyle(enabled ? .green : .orange)
+                .foregroundStyle(enabled ? LabTheme.verified : LabTheme.draft)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -701,7 +701,7 @@ struct PerformanceView: View {
                     systemImage: model.keyboardSetLibrarySelectionOperational ? "checkmark.seal.fill" : "testtube.2"
                 )
                 .font(.caption)
-                .foregroundStyle(model.keyboardSetLibrarySelectionOperational ? .green : .orange)
+                .foregroundStyle(model.keyboardSetLibrarySelectionOperational ? LabTheme.verified : LabTheme.draft)
             }
 
             HStack(spacing: 10) {
@@ -847,7 +847,7 @@ struct PerformanceView: View {
                         systemImage: entry.status == .verified ? (sampled ? "checkmark.circle.fill" : "checkmark.seal.fill") : "pencil.circle"
                     )
                         .font(.caption)
-                        .foregroundStyle(entry.status == .verified ? .green : .secondary)
+                        .foregroundStyle(entry.status == .verified ? LabTheme.verified : .secondary)
                     Button(entry.id == model.auditioningSoundID ? "Ouvindo…" : "Ouvir", systemImage: "play.fill") {
                         model.auditionCatalogSound(id: entry.id, target: part.target, partName: part.rawValue)
                     }

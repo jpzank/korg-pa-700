@@ -62,6 +62,9 @@ public enum ShowPDFTextParser {
             if line.caseInsensitiveCompare(title) == .orderedSame || extractKey(line) != nil || line.allSatisfy(\.isNumber) {
                 continue
             }
+            if ShowChartLine(kind: .lyrics, text: line).isImportPaginationArtifact {
+                continue
+            }
             if let section = splitSection(line) {
                 appendSpaceIfNeeded(to: &output)
                 output.append(.init(kind: .section, text: section.label))

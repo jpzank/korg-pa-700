@@ -196,6 +196,21 @@
           "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [191, 0, 0, 191, 32, 6, 207, 2],
           "note": "Arranger Lab sent Bossa Nova as CC0=0, CC32=6, PC=2 on configured Control channel 16. The user physically confirmed that Style selection and rhythms work on the PA700.",
           "capturedAt": "2026-07-17"
+        },
+        {
+          "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [191, 0, 2, 191, 32, 10, 207, 0],
+          "note": "The PA700 v1.5 Musical Resources table defines User Styles as CC0=2 with CC32=bank 0...11 and PC=slot 0...47. Arranger Lab sent JPD (User bank 11, slot 1) as CC0=2, CC32=10, PC=0 on configured Control channel 16 after first selecting Brush Ballad; the user physically confirmed that the PA700 returned to JPD.",
+          "capturedAt": "2026-07-20"
+        }
+      ]
+    },
+    "masterTranspose": {
+      "id": "masterTranspose", "status": "Verified", "template": "F0 7F 7F 04 04 00 (40 + semitones) F7",
+      "evidence": [
+        {
+          "kind": "raw-midi-and-manual", "firmware": "1.5.0", "bytes": [240, 127, 127, 4, 4, 0, 61, 247],
+          "note": "Universal realtime Master Coarse Tuning value 61 selected transpose -3; user physically confirmed the PA700 display changed to -3.",
+          "capturedAt": "2026-07-20"
         }
       ]
     },

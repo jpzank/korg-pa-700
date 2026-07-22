@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "blockID": "showboat-jul-23-piano-block-a",
   "parentCatalogID": "showboat-jul-23-gojam",
   "name": "Showboat Jul 23 · Piano · Bloco A",
@@ -12,7 +12,9 @@
       "originalKey": "D",
       "transposeSemitones": -3,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000002",
@@ -21,7 +23,9 @@
       "originalKey": "G",
       "transposeSemitones": -2,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000003",
@@ -30,7 +34,9 @@
       "originalKey": "G",
       "transposeSemitones": 0,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000004",
@@ -39,7 +45,9 @@
       "originalKey": "Am",
       "transposeSemitones": 4,
       "upper1Sound": "Rhodes",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 2
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000005",
@@ -48,7 +56,9 @@
       "originalKey": "C",
       "transposeSemitones": 1,
       "upper1Sound": "Rhodes",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 2
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000006",
@@ -57,7 +67,9 @@
       "originalKey": "C",
       "transposeSemitones": 0,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000007",
@@ -66,7 +78,9 @@
       "originalKey": "G",
       "transposeSemitones": 0,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000008",
@@ -75,7 +89,9 @@
       "originalKey": "C",
       "transposeSemitones": 1,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-000000000009",
@@ -84,7 +100,9 @@
       "originalKey": "C",
       "transposeSemitones": 1,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     },
     {
       "presetID": "A23BA000-0000-4000-8000-00000000000A",
@@ -93,7 +111,9 @@
       "originalKey": "C",
       "transposeSemitones": 0,
       "upper1Sound": "Piano",
-      "soundLibrary": "USER · JPD"
+      "soundLibrary": "USER · JPD",
+      "arrangerStyleID": "user-style-jpd",
+      "keyboardSetSlot": 1
     }
   ]
 }

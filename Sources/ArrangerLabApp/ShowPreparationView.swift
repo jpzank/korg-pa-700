@@ -25,7 +25,7 @@ struct ShowPreparationView: View {
                 ShowSetListEditor()
                     .tabItem { Label("Repertórios", systemImage: "music.note.list") }
             }
-            .padding(18)
+            .padding(LabTheme.standard)
         }
         .tint(LabTheme.signal)
         .alert("Arranger Lab", isPresented: Binding(
@@ -73,10 +73,10 @@ private struct ShowPresetEditor: View {
                             .fontWeight(.medium)
                             .lineLimit(2)
                         HStack(spacing: 6) {
-                            Text(songBookLabel(preset.songBookNumber))
+                            Text(preset.hasDirectSetup ? "JPD · Kbd \(preset.keyboardSetSlot ?? 0)" : songBookLabel(preset.songBookNumber))
                             Text("·")
-                            Text(preset.isConfirmed ? "Confirmado" : "Rascunho")
-                                .foregroundStyle(preset.isConfirmed ? LabTheme.verified : .orange)
+                            Text(preset.isReadyToPlay ? "Configurada" : "Somente leitura")
+                                .foregroundStyle(preset.isReadyToPlay ? LabTheme.verified : LabTheme.draft)
                         }
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -112,26 +112,34 @@ private struct ShowPresetEditor: View {
             }
             .navigationSplitViewColumnWidth(min: 230, ideal: 270)
         } detail: {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    PageHeader(
-                        title: selectedPresetID == nil ? "Novo preset" : draft.songTitle,
-                        subtitle: "Prepare a cifra e a referência operacional. O estado real continua vindo da entrada SongBook do PA700."
-                    )
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: LabTheme.section) {
+                        PageHeader(
+                            title: selectedPresetID == nil ? "Novo preset" : draft.songTitle,
+                            subtitle: "Prepare a cifra e a configuração enviada diretamente ao PA700. SongBook é opcional."
+                        )
 
-                    songAndSongBookSection
-                    partsSection
-                    effectsSection
-                    chartSection
-                    actionBar
+                        songAndSongBookSection
+                        partsSection
+                        effectsSection
+                        chartSection
 
-                    Label(model.showStatus, systemImage: statusIcon)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        Label(model.showStatus, systemImage: statusIcon)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: 940, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(LabTheme.page)
                 }
-                .frame(maxWidth: 940, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(24)
+
+                Divider()
+
+                actionBar
+                    .padding(.horizontal, LabTheme.page)
+                    .frame(height: 58)
+                    .background(Color(nsColor: .windowBackgroundColor))
             }
         }
         .onAppear { selectFirstPreset() }
@@ -171,7 +179,7 @@ private struct ShowPresetEditor: View {
     }
 
     private var songAndSongBookSection: some View {
-        GroupBox("Música e SongBook") {
+        GroupBox("Música e execução") {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 13) {
                 GridRow {
                     Text("Música")
@@ -192,7 +200,7 @@ private struct ShowPresetEditor: View {
                     }
                 }
                 GridRow {
-                    Text("Número SongBook")
+                    Text("SongBook (opcional)")
                     HStack(spacing: 10) {
                         TextField("Ainda não definido", text: songBookBinding)
                             .textFieldStyle(.roundedBorder)
@@ -210,7 +218,7 @@ private struct ShowPresetEditor: View {
                             .frame(width: 100, alignment: .leading)
                         Stepper("Transpose", value: $draft.transposeSemitones, in: -12...12)
                             .labelsHidden()
-                        Text("Referência visual; o valor efetivo vem do SongBook.")
+                        Text(draft.hasDirectSetup ? "Enviado diretamente pelo Mac ao PA700." : "Use SongBook como alternativa.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -288,9 +296,9 @@ private struct ShowPresetEditor: View {
                     .font(.system(.body, design: .monospaced))
                     .scrollContentBackground(.hidden)
                     .padding(10)
-                    .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
+                    .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: LabTheme.radius))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: LabTheme.radius)
                             .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
                     }
                     .frame(minHeight: 480)
@@ -316,7 +324,7 @@ private struct ShowPresetEditor: View {
                 .buttonStyle(.borderedProminent)
 
             Button("Salvar e testar no PA700", systemImage: "play.fill") { saveAndTest() }
-                .disabled(!model.connected || draft.songBookNumber == nil)
+                .disabled(!model.connected || (!draft.hasDirectSetup && draft.songBookNumber == nil))
 
             if let savedPreset, model.pendingShowConfirmationID == savedPreset.id {
                 Button("Confirmar no PA700", systemImage: "checkmark.seal.fill") {
@@ -342,7 +350,7 @@ private struct ShowPresetEditor: View {
     }
 
     private var statusIcon: String {
-        savedPreset?.isConfirmed == true ? "checkmark.seal.fill" : "info.circle"
+        savedPreset?.isReadyToPlay == true ? "checkmark.seal.fill" : "info.circle"
     }
 
     private var songBookBinding: Binding<String> {
@@ -467,7 +475,7 @@ private struct ShowPresetEditor: View {
     }
 
     private func songBookLabel(_ number: Int?) -> String {
-        number.map { "SongBook \($0)" } ?? "SongBook —"
+        number.map { "SongBook \($0)" } ?? "Sem SongBook"
     }
 
     private func transposeText(_ value: Int) -> String {
@@ -520,9 +528,9 @@ private struct ShowPartSoundRow: View {
             .buttonStyle(.plain)
             .padding(.horizontal, 11)
             .frame(minHeight: 44)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: LabTheme.radius))
             .overlay {
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: LabTheme.radius)
                     .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
             }
             .disabled(!part.isEnabled)
@@ -631,7 +639,7 @@ private struct ShowSoundBrowser: View {
                 }
                 .padding(.horizontal, 10)
                 .frame(height: 32)
-                .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 7))
+                .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: LabTheme.radius))
 
                 Picker("Categoria", selection: $categoryFilter) {
                     ForEach(categories, id: \.self) { Text($0).tag($0) }
@@ -807,10 +815,10 @@ private struct ShowSetListEditor: View {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(preset.songTitle).fontWeight(.medium)
                                             HStack(spacing: 5) {
-                                                Text(preset.songBookNumber.map { "SongBook \($0)" } ?? "SongBook —")
+                                                Text(preset.songBookNumber.map { "SongBook \($0)" } ?? "Sem SongBook")
                                                 Text("·")
                                                 Text(preset.isConfirmed ? "Confirmado" : "Rascunho")
-                                                    .foregroundStyle(preset.isConfirmed ? Color.secondary : Color.orange)
+                                                    .foregroundStyle(preset.isConfirmed ? Color.secondary : LabTheme.draft)
                                             }
                                             .font(.caption.monospacedDigit())
                                             .foregroundStyle(.secondary)

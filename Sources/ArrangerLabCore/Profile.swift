@@ -73,7 +73,15 @@ public struct InstrumentProfile: Codable, Equatable, Sendable {
         guard schemaVersion == 1 else { throw ArrangerLabError.invalidProfile("unsupported schema version \(schemaVersion)") }
         guard !id.isEmpty, !model.isEmpty else { throw ArrangerLabError.invalidProfile("id and model are required") }
         guard channels.values.allSatisfy({ (1...16).contains(Int($0)) }) else { throw ArrangerLabError.invalidProfile("channels must be 1...16") }
-        guard Set(mappings.keys).count == mappings.count else { throw ArrangerLabError.invalidProfile("mapping IDs must be unique") }
+        guard mappings.allSatisfy({ key, mapping in key == mapping.id }) else {
+            throw ArrangerLabError.invalidProfile("mapping dictionary keys must match mapping IDs")
+        }
+        guard presets.allSatisfy({ !$0.id.isEmpty && !$0.displayName.isEmpty }) else {
+            throw ArrangerLabError.invalidProfile("preset IDs and names are required")
+        }
+        guard Set(presets.map(\.id)).count == presets.count else {
+            throw ArrangerLabError.invalidProfile("preset IDs must be unique")
+        }
     }
 
     public static func bundledPA700() throws -> InstrumentProfile {

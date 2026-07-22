@@ -4,6 +4,7 @@
   <key>CFBundleDevelopmentRegion</key><string>pt_BR</string>
   <key>CFBundleDisplayName</key><string>Arranger Lab</string>
   <key>CFBundleExecutable</key><string>Arranger Lab</string>
+  <key>CFBundleIconFile</key><string>ArrangerLab.icns</string>
   <key>CFBundleIdentifier</key><string>com.joaovilela.arrangerlab</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>Arranger Lab</string>

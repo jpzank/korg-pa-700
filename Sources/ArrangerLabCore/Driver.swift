@@ -19,7 +19,7 @@ public struct PA700Driver: InstrumentDriver {
     public let profile: InstrumentProfile
     public let styleCatalog: ArrangerStyleCatalog
     public let keyboardSetLibraryCatalog: KeyboardSetLibraryCatalog
-    public let capabilities: Set<String> = ["identity", "partVolume", "partExpression", "partPan", "partDamper", "devicePreset", "styleSelection", "keyboardSetLibrarySelection", "arrangerTransport", "midiClock", "songBook", "arrangerElement", "keyboardSet", "arrangerControl"]
+    public let capabilities: Set<String> = ["identity", "partVolume", "partExpression", "partPan", "partDamper", "devicePreset", "styleSelection", "keyboardSetLibrarySelection", "masterTranspose", "arrangerTransport", "midiClock", "songBook", "arrangerElement", "keyboardSet", "arrangerControl"]
 
     public init(profile: InstrumentProfile, styleCatalog: ArrangerStyleCatalog? = nil, keyboardSetLibraryCatalog: KeyboardSetLibraryCatalog? = nil) {
         self.profile = profile
@@ -89,6 +89,17 @@ public struct PA700Driver: InstrumentDriver {
                 .init(message: .controlChange(channel: channel, controller: 0, value: entry.bankMSB), mappingID: "keyboardSetLibrarySelection"),
                 .init(offsetNanoseconds: 1_000_000, message: .controlChange(channel: channel, controller: 32, value: entry.bankLSB), mappingID: "keyboardSetLibrarySelection"),
                 .init(offsetNanoseconds: 2_000_000, message: .programChange(channel: channel, program: entry.program), mappingID: "keyboardSetLibrarySelection")
+            ]
+        case let .setMasterTranspose(semitones):
+            guard (-12...12).contains(semitones) else {
+                throw ArrangerLabError.invalidValue("master transpose must be -12...12")
+            }
+            try requireMapping("masterTranspose", allowDraft: allowDraft)
+            return [
+                .init(
+                    message: .systemExclusive([0xF0, 0x7F, 0x7F, 0x04, 0x04, 0x00, UInt8(64 + semitones), 0xF7]),
+                    mappingID: "masterTranspose"
+                )
             ]
         case let .setTransport(domain, state):
             let mapping = domain == .midiClock ? "midiClock" : "arrangerTransport"

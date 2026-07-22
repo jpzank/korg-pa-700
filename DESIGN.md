@@ -2,11 +2,14 @@
 name: Arranger Lab
 description: A precise macOS MIDI evidence bench for arranger keyboards
 colors:
-  signal-teal: "#167D78"
-  inbound-blue: "#0E6E83"
-  draft-amber: "#A95A00"
-  verified-green: "#2E7D32"
-  safety-red: "#B42318"
+  signal-teal: "oklch(58% 0.085 185)"
+  inbound-blue: "oklch(55% 0.085 220)"
+  draft-amber: "oklch(61% 0.10 60)"
+  verified-green: "oklch(56% 0.105 145)"
+  safety-red: "oklch(56% 0.145 25)"
+  stage-background: "oklch(18% 0.01 185)"
+  stage-surface: "oklch(23% 0.01 185)"
+  chord-amber: "oklch(75% 0.14 55)"
 typography:
   body:
     fontFamily: "SF Pro, -apple-system, system-ui, sans-serif"
@@ -33,12 +36,12 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.signal-teal}"
-    textColor: "#FFFFFF"
+    textColor: "oklch(98% 0.005 185)"
     rounded: "{rounded.control}"
     padding: "6px 12px"
   button-danger:
     backgroundColor: "{colors.safety-red}"
-    textColor: "#FFFFFF"
+    textColor: "oklch(98% 0.005 25)"
     rounded: "{rounded.control}"
     padding: "6px 12px"
 ---
@@ -77,6 +80,8 @@ The palette uses one restrained signal accent plus semantic colors whose labels 
 
 - **Verified Green:** evidence-backed lifecycle state only.
 - **Safety Red:** Panic, destructive-risk confirmation and active recording stop.
+- **Stage Background / Surface:** fixed dark, subtly teal neutrals used only in the Show window.
+- **Chord Amber:** chord lines and transpose values in the Show reader.
 
 ### Neutral
 
@@ -140,6 +145,8 @@ The app is flat by default and uses native tonal layering, separators and select
 
 The persistent split sidebar uses SF Symbols and text. The active page has one 20px title and a short operational subtitle; connection and Panic remain visible above every page.
 
+The Show window responds structurally. Below 1180px it removes the redundant details inspector while preserving the repertoire rail and chart. Focus mode removes both side regions, locks annotation editing, centers the readable column, uses its own saved larger type size and enlarges the controls needed during a performance.
+
 ### MIDI Event Table
 
 Direction combines arrow icon, `IN`/`OUT` text and semantic color. Bytes and timestamps are selectable monospace data. Clock and Active Sensing filters alter visibility only.
@@ -147,6 +154,10 @@ Direction combines arrow icon, `IN`/`OUT` text and semantic color. Bytes and tim
 ### Guided Test Rail
 
 A six-step rail is the default entry point for musicians. Each step uses a numbered or checked circle, one plain-language instruction, live evidence and a single primary next action. Advanced raw MIDI tools remain in separate sidebar destinations.
+
+### Operational State
+
+Selecting a song opens it for reading and never sends MIDI. `Aplicar no PA700` is the only show-reader action that transmits the selected setup. `Configurada`, `Somente leitura`, `Em leitura` and `No PA700` describe separate states and are never collapsed into one label.
 
 ## Do's and Don'ts
 

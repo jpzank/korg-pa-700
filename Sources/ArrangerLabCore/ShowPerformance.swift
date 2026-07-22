@@ -91,6 +91,34 @@ public struct ShowChartLine: Codable, Equatable, Identifiable, Sendable {
             return ShowChartLine(kind: .lyrics, text: rawLine)
         }
     }
+
+    /// Removes page-fragment labels introduced by PDF and web extraction,
+    /// while keeping IDs and every musical line intact. Adjacent empty lines
+    /// are compacted so removed labels do not leave visual gaps on stage.
+    public static func removingImportArtifacts(from lines: [ShowChartLine]) -> [ShowChartLine] {
+        var cleaned: [ShowChartLine] = []
+        for line in lines where !line.isImportPaginationArtifact {
+            if line.kind == .space, cleaned.last?.kind == .space { continue }
+            cleaned.append(line)
+        }
+        while cleaned.first?.kind == .space { cleaned.removeFirst() }
+        while cleaned.last?.kind == .space { cleaned.removeLast() }
+        return cleaned
+    }
+
+    public var isImportPaginationArtifact: Bool {
+        guard kind == .lyrics else { return false }
+        let components = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .split(whereSeparator: { $0.isWhitespace })
+        guard components.count == 4,
+              components[0] == "parte",
+              components[2] == "de",
+              let part = Int(components[1]),
+              let total = Int(components[3]) else { return false }
+        return total > 1 && part > 0 && part <= total
+    }
 }
 
 public struct ShowPresetSource: Codable, Equatable, Sendable {
@@ -148,10 +176,39 @@ public struct ShowReaderSettings: Codable, Equatable, Sendable {
     }
 }
 
+public struct ShowChartAnnotation: Codable, Equatable, Identifiable, Sendable {
+    public let id: UUID
+    public var text: String
+    /// Position inside the visible chart canvas. Normalized coordinates keep
+    /// the note in place when the show window changes size or enters full screen.
+    public var normalizedX: Double
+    public var normalizedY: Double
+
+    public init(
+        id: UUID = UUID(),
+        text: String = "Nova nota",
+        normalizedX: Double = 0.78,
+        normalizedY: Double = 0.18
+    ) {
+        self.id = id
+        self.text = text
+        self.normalizedX = normalizedX
+        self.normalizedY = normalizedY
+    }
+
+    public func validate() throws {
+        guard (0...1).contains(normalizedX), (0...1).contains(normalizedY) else {
+            throw ArrangerLabError.invalidValue("show chart annotation position must be normalized")
+        }
+    }
+}
+
 public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public var songTitle: String
     public var songBookNumber: Int?
+    public var arrangerStyleID: String?
+    public var keyboardSetSlot: Int?
     public var transposeSemitones: Int
     public var parts: [ShowPresetPart]
     public var effectsSummary: String
@@ -160,16 +217,24 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
     public var source: ShowPresetSource?
     public var chartLines: [ShowChartLine]
     public var readerSettings: ShowReaderSettings
+    public var chartAnnotations: [ShowChartAnnotation]
     public var confirmedAt: Date?
     public let createdAt: Date
     public var updatedAt: Date
 
     public var isConfirmed: Bool { confirmedAt != nil && songBookNumber != nil }
+    public var hasDirectSetup: Bool {
+        !(arrangerStyleID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            && keyboardSetSlot.map { (1...4).contains($0) } == true
+    }
+    public var isReadyToPlay: Bool { hasDirectSetup || isConfirmed }
 
     public init(
         id: UUID = UUID(),
         songTitle: String,
         songBookNumber: Int? = nil,
+        arrangerStyleID: String? = nil,
+        keyboardSetSlot: Int? = nil,
         transposeSemitones: Int = 0,
         parts: [ShowPresetPart] = ShowPreset.defaultParts(),
         effectsSummary: String = "",
@@ -178,6 +243,7 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         source: ShowPresetSource? = nil,
         chartLines: [ShowChartLine] = [],
         readerSettings: ShowReaderSettings = .init(),
+        chartAnnotations: [ShowChartAnnotation] = [],
         confirmedAt: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -185,6 +251,8 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.songTitle = songTitle
         self.songBookNumber = songBookNumber
+        self.arrangerStyleID = arrangerStyleID
+        self.keyboardSetSlot = keyboardSetSlot
         self.transposeSemitones = transposeSemitones
         self.parts = parts
         self.effectsSummary = effectsSummary
@@ -193,14 +261,15 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         self.source = source
         self.chartLines = chartLines
         self.readerSettings = readerSettings
+        self.chartAnnotations = chartAnnotations
         self.confirmedAt = confirmedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, songTitle, songBookNumber, transposeSemitones, parts, effectsSummary, notes
-        case originalKey, source, chartLines, readerSettings, confirmedAt, createdAt, updatedAt
+        case id, songTitle, songBookNumber, arrangerStyleID, keyboardSetSlot, transposeSemitones, parts, effectsSummary, notes
+        case originalKey, source, chartLines, readerSettings, chartAnnotations, confirmedAt, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -208,6 +277,8 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         id = try container.decode(UUID.self, forKey: .id)
         songTitle = try container.decode(String.self, forKey: .songTitle)
         songBookNumber = try container.decodeIfPresent(Int.self, forKey: .songBookNumber)
+        arrangerStyleID = try container.decodeIfPresent(String.self, forKey: .arrangerStyleID)
+        keyboardSetSlot = try container.decodeIfPresent(Int.self, forKey: .keyboardSetSlot)
         transposeSemitones = try container.decode(Int.self, forKey: .transposeSemitones)
         parts = try container.decode([ShowPresetPart].self, forKey: .parts)
         effectsSummary = try container.decode(String.self, forKey: .effectsSummary)
@@ -216,6 +287,7 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         source = try container.decodeIfPresent(ShowPresetSource.self, forKey: .source)
         chartLines = try container.decodeIfPresent([ShowChartLine].self, forKey: .chartLines) ?? []
         readerSettings = try container.decodeIfPresent(ShowReaderSettings.self, forKey: .readerSettings) ?? .init()
+        chartAnnotations = try container.decodeIfPresent([ShowChartAnnotation].self, forKey: .chartAnnotations) ?? []
         confirmedAt = try container.decodeIfPresent(Date.self, forKey: .confirmedAt)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
@@ -237,6 +309,12 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         if confirmedAt != nil, songBookNumber == nil {
             throw ArrangerLabError.invalidValue("confirmed show preset must have a SongBook number")
         }
+        if (arrangerStyleID == nil) != (keyboardSetSlot == nil) {
+            throw ArrangerLabError.invalidValue("direct show setup requires both Style and Keyboard Set")
+        }
+        if let keyboardSetSlot, !(1...4).contains(keyboardSetSlot) {
+            throw ArrangerLabError.invalidValue("direct show Keyboard Set must be 1...4")
+        }
         guard (-12...12).contains(transposeSemitones) else {
             throw ArrangerLabError.invalidValue("show preset transpose must be -12...12")
         }
@@ -247,14 +325,20 @@ public struct ShowPreset: Codable, Equatable, Identifiable, Sendable {
         guard Set(chartLines.map(\.id)).count == chartLines.count else {
             throw ArrangerLabError.invalidValue("show chart contains duplicate line IDs")
         }
+        guard Set(chartAnnotations.map(\.id)).count == chartAnnotations.count else {
+            throw ArrangerLabError.invalidValue("show chart contains duplicate annotation IDs")
+        }
         try parts.forEach { try $0.validate() }
         try chartLines.forEach { try $0.validate() }
+        try chartAnnotations.forEach { try $0.validate() }
         try source?.validate()
         try readerSettings.validate()
     }
 
     public func hasSameOperationalReference(as other: ShowPreset) -> Bool {
         songBookNumber == other.songBookNumber
+            && arrangerStyleID == other.arrangerStyleID
+            && keyboardSetSlot == other.keyboardSetSlot
             && transposeSemitones == other.transposeSemitones
             && parts == other.parts
             && effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -395,34 +479,48 @@ public struct BundledShowCatalog: Codable, Equatable, Sendable {
     public let sourceURL: String?
     public let entries: [BundledShowCatalogEntry]
 
+    private static let bundledCatalogs: Result<[BundledShowCatalog], Error> = Result {
+        [
+            try loadBundled(resource: "boteco-jul3-gojam", schemaVersion: 1, entryCount: 57),
+            try loadBundled(resource: "showboat-jul-23-gojam", schemaVersion: 2, entryCount: 26)
+        ]
+    }
+
     public static func botecoJul3() throws -> BundledShowCatalog {
-        guard let url = Bundle.module.url(forResource: "boteco-jul3-gojam", withExtension: "json") else {
+        guard let catalog = try bundledCatalogs.get().first(where: { $0.catalogID == "boteco-jul3-gojam" }) else {
             throw ArrangerLabError.corruptCapture("bundled Boteco Jul3 catalog is missing")
-        }
-        let catalog = try decoder.decode(BundledShowCatalog.self, from: Data(contentsOf: url))
-        guard catalog.schemaVersion == 1, catalog.entries.count == 57 else {
-            throw ArrangerLabError.corruptCapture("bundled Boteco Jul3 catalog is invalid")
         }
         return catalog
     }
 
     public static func showboatJul23() throws -> BundledShowCatalog {
-        guard let url = Bundle.module.url(forResource: "showboat-jul-23-gojam", withExtension: "json") else {
+        guard let catalog = try bundledCatalogs.get().first(where: { $0.catalogID == "showboat-jul-23-gojam" }) else {
             throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 catalog is missing")
-        }
-        let catalog = try decoder.decode(BundledShowCatalog.self, from: Data(contentsOf: url))
-        guard catalog.schemaVersion == 2, catalog.entries.count == 26 else {
-            throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 catalog is invalid")
         }
         return catalog
     }
 
     public static func allBundled() throws -> [BundledShowCatalog] {
-        [try botecoJul3(), try showboatJul23()]
+        try bundledCatalogs.get()
     }
 
     public static func bundled(catalogID: String) throws -> BundledShowCatalog? {
         try allBundled().first { $0.catalogID == catalogID }
+    }
+
+    private static func loadBundled(
+        resource: String,
+        schemaVersion: Int,
+        entryCount: Int
+    ) throws -> BundledShowCatalog {
+        guard let url = Bundle.module.url(forResource: resource, withExtension: "json") else {
+            throw ArrangerLabError.corruptCapture("bundled \(resource) catalog is missing")
+        }
+        let catalog = try decoder.decode(BundledShowCatalog.self, from: Data(contentsOf: url))
+        guard catalog.schemaVersion == schemaVersion, catalog.entries.count == entryCount else {
+            throw ArrangerLabError.corruptCapture("bundled \(resource) catalog is invalid")
+        }
+        return catalog
     }
 
     public func preset(for entry: BundledShowCatalogEntry, id: UUID? = nil, now: Date = Date()) -> ShowPreset {
@@ -440,7 +538,7 @@ public struct BundledShowCatalog: Codable, Equatable, Sendable {
                 endPage: entry.endPage,
                 sourceURL: sourceURL
             ),
-            chartLines: entry.chartLines,
+            chartLines: ShowChartLine.removingImportArtifacts(from: entry.chartLines),
             createdAt: now,
             updatedAt: now
         )
@@ -482,7 +580,12 @@ public struct BundledShowCatalog: Codable, Equatable, Sendable {
                     changed = true
                 }
                 if preset.chartLines.isEmpty {
-                    preset.chartLines = entry.chartLines
+                    preset.chartLines = ShowChartLine.removingImportArtifacts(from: entry.chartLines)
+                    changed = true
+                }
+                let cleanedChart = ShowChartLine.removingImportArtifacts(from: preset.chartLines)
+                if cleanedChart != preset.chartLines {
+                    preset.chartLines = cleanedChart
                     changed = true
                 }
                 if changed {

@@ -10,7 +10,7 @@ struct ArrangerLabApp: App {
         WindowGroup("Show", id: "show") {
             ShowView()
                 .environmentObject(model)
-                .frame(minWidth: 1_040, minHeight: 680)
+                .frame(minWidth: 920, minHeight: 640)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.terminate() }
         }
             .defaultSize(width: 1_220, height: 780)
@@ -20,14 +20,14 @@ struct ArrangerLabApp: App {
         Window("Preparar show", id: "prepare-show") {
             ShowPreparationView()
                 .environmentObject(model)
-                .frame(minWidth: 1_080, minHeight: 720)
+                .frame(minWidth: 980, minHeight: 700)
         }
             .defaultSize(width: 1_180, height: 820)
 
         Window("Laboratório", id: "laboratory") {
             LaboratoryRootView()
                 .environmentObject(model)
-                .frame(minWidth: 1_040, minHeight: 680)
+                .frame(minWidth: 960, minHeight: 660)
         }
             .defaultSize(width: 1_220, height: 780)
     }
@@ -74,7 +74,8 @@ struct LaboratoryRootView: View {
                     case .recorder: RecorderView()
                     case .experiments: ExperimentsView()
                     }
-                }.padding(24)
+                }
+                .padding(LabTheme.page)
             }
         }
         .tint(LabTheme.signal)
@@ -85,8 +86,10 @@ struct LaboratoryRootView: View {
 struct ConnectionStrip: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: model.connected ? "circle.fill" : "circle").foregroundStyle(model.connected ? LabTheme.verified : .secondary).accessibilityLabel(model.connected ? "Conectado" : "Desconectado")
+        HStack(spacing: LabTheme.control) {
+            Image(systemName: model.connected ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundStyle(model.connected ? LabTheme.verified : .secondary)
+                .accessibilityLabel(model.connected ? "Conectado" : "Desconectado")
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.connected ? "PA700 conectado via USB" : "Nenhum teclado conectado").fontWeight(.semibold)
                 Text(model.section == .performance ? (model.connected ? model.performanceStatus : "Conecte o teclado para começar") : model.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -94,13 +97,25 @@ struct ConnectionStrip: View {
             Spacer()
             Text(model.profile.model).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
             Button("Panic", systemImage: "exclamationmark.octagon.fill") { model.panic() }.buttonStyle(.borderedProminent).tint(LabTheme.danger).keyboardShortcut(".", modifiers: [.command, .shift])
-        }.padding(.horizontal, 18).frame(height: 56).background(Color(nsColor: .windowBackgroundColor))
+        }
+        .padding(.horizontal, 18)
+        .frame(height: LabTheme.statusStripHeight)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
 struct PageHeader: View {
     let title: String; let subtitle: String
-    var body: some View { VStack(alignment: .leading, spacing: 4) { Text(title).font(.title2.weight(.semibold)); Text(subtitle).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.title2.weight(.semibold))
+            Text(subtitle)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 720, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 struct ConnectionView: View {
@@ -114,7 +129,7 @@ struct ConnectionView: View {
                 HStack { Button("Conectar") { model.connect() }.buttonStyle(.borderedProminent); Button("Localizar PA700") { model.autoConnect() }; Button("Desconectar") { model.disconnect() }.disabled(!model.connected) }
             }.formStyle(.grouped)
             GroupBox("Identidade universal") { HStack { VStack(alignment: .leading) { Text(model.identityResult); Text("Consulta: F0 7E 7F 06 01 F7").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary) }; Spacer(); Button("Consultar") { model.queryIdentity() }.disabled(!model.connected) }.padding(8) }
-            GroupBox("Preset MIDI ArrangerLab — configuração física") {
+            GroupBox("Preset MIDI ArrangerLab: configuração física") {
                 VStack(alignment: .leading, spacing: 7) { Text("Crie no primeiro slot vazio; nunca sobrescreva um preset.").fontWeight(.semibold); Text("Ch 1 Upper1 · Ch 2 Upper2 · Ch 3 Upper3 · Ch 4 Lower · Ch 16 Control"); Text("Libere CC, PC e apenas SysEx conhecidos. Firmware permanece em 1.5.0.").foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
             }
             Spacer()
@@ -127,11 +142,11 @@ struct MonitorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PageHeader(title: "Monitor", subtitle: "Filtros escondem ruído visual sem alterar os bytes capturados.")
-            HStack { Toggle("Ocultar Clock", isOn: $model.filterClock); Toggle("Ocultar Active Sensing", isOn: $model.filterActiveSensing); Spacer(); Text("\(model.events.count) crus · \(model.visibleEvents.count) visíveis").foregroundStyle(.secondary); Button("Limpar") { model.clearEvents() } }
+            HStack { Toggle("Ocultar Clock", isOn: $model.filterClock); Toggle("Ocultar Active Sensing", isOn: $model.filterActiveSensing); Spacer(); Text("\(model.totalEventCount) crus · \(model.visibleEvents.count) visíveis no buffer").foregroundStyle(.secondary); Button("Limpar") { model.clearEvents() } }
             Table(model.visibleEvents.suffix(2_000).reversed()) {
                 TableColumn("Tempo +s") { event in Text(model.elapsedString(for: event)).font(.system(.caption, design: .monospaced)) }.width(90)
                 TableColumn("Direção") { event in Label(event.direction == .input ? "IN" : "OUT", systemImage: event.direction == .input ? "arrow.down.left" : "arrow.up.right").foregroundStyle(event.direction == .input ? LabTheme.inbound : LabTheme.draft) }.width(75)
-                TableColumn("Mensagem") { event in Text(event.message?.displayName ?? "Raw") }.width(130)
+                TableColumn("Mensagem") { event in Text(event.message?.displayName ?? "Bruta") }.width(130)
                 TableColumn("Endpoint") { event in Text(event.endpointName) }.width(min: 140)
                 TableColumn("Bytes") { event in Text(event.hex).font(.system(.body, design: .monospaced)).textSelection(.enabled) }
             }
@@ -157,13 +172,14 @@ struct SendView: View {
                 }.formStyle(.grouped).frame(maxWidth: 430)
                 GroupBox("Modo Expert") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(model.expert.isUnlocked ? "Ativo — expira ao desconectar ou fechar" : "Digite exatamente o modelo conectado.").foregroundStyle(model.expert.isUnlocked ? .green : .secondary)
+                        Text(model.expert.isUnlocked ? "Ativo; expira ao desconectar ou fechar" : "Digite exatamente o modelo conectado.")
+                            .foregroundStyle(model.expert.isUnlocked ? LabTheme.verified : .secondary)
                         HStack { TextField("PA700", text: $typedModel); Button("Desbloquear") { model.unlockExpert(typedModel: typedModel) } }
                         Text("Destino: \(model.transport?.selectedDestination?.name ?? "nenhum")").font(.caption)
                         TextField("Bytes SysEx", text: $sysEx).font(.system(.body, design: .monospaced)).disabled(!model.expert.isUnlocked)
                         Toggle("Confirmo o envio destes bytes completos", isOn: $confirmSysEx).disabled(!model.expert.isUnlocked)
                         Button("Enviar SysEx arbitrário") { model.sendSysEx(hex: sysEx, confirmed: confirmSysEx) }.buttonStyle(.borderedProminent).tint(LabTheme.danger).disabled(!model.expert.isUnlocked || !confirmSysEx)
-                        Text("SysEx desconhecido nunca entra em replay automático.").font(.caption).foregroundStyle(.secondary)
+                        Text("SysEx desconhecido nunca entra em reprodução automática.").font(.caption).foregroundStyle(.secondary)
                     }.padding(8)
                 }
             }
@@ -177,14 +193,14 @@ struct RecorderView: View {
     @State private var includeNotes = false; @State private var includeClock = false; @State private var includeSensing = false
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(title: "Recorder / Diff", subtitle: "Replay usa somente eventos de saída e sempre termina com Panic.")
-            HStack { Button(model.isRecording ? "Stop" : "Record", systemImage: model.isRecording ? "stop.fill" : "record.circle") { model.toggleRecording() }.buttonStyle(.borderedProminent).tint(model.isRecording ? LabTheme.danger : LabTheme.signal); Button("Guardar A") { model.markCaptureA() }; Button("Guardar B") { model.markCaptureB() }; Divider().frame(height: 20); Text("Replay"); Slider(value: $model.replaySpeed, in: 0.25...2, step: 0.25).frame(width: 130); Text("\(model.replaySpeed, specifier: "%.2f")×").monospacedDigit(); Button("Reproduzir") { model.replayCurrent() }.disabled(!model.connected); Spacer(); Button("Salvar .arrlab") { model.saveExperiment() } }
+            PageHeader(title: "Captura e comparação", subtitle: "A reprodução usa somente eventos de saída e sempre termina com Panic.")
+            HStack { Button(model.isRecording ? "Parar" : "Gravar", systemImage: model.isRecording ? "stop.fill" : "record.circle") { model.toggleRecording() }.buttonStyle(.borderedProminent).tint(model.isRecording ? LabTheme.danger : LabTheme.signal); Button("Guardar A") { model.markCaptureA() }; Button("Guardar B") { model.markCaptureB() }; Divider().frame(height: 20); Text("Reprodução"); Slider(value: $model.replaySpeed, in: 0.25...2, step: 0.25).frame(width: 130); Text("\(model.replaySpeed, specifier: "%.2f")×").monospacedDigit(); Button("Reproduzir") { model.replayCurrent() }.disabled(!model.connected); Spacer(); Button("Salvar .arrlab") { model.saveExperiment() } }
             HStack { Toggle("Notas", isOn: $includeNotes); Toggle("Clock", isOn: $includeClock); Toggle("Active Sensing", isOn: $includeSensing); Button("Atualizar Diff") { model.updateDiff(includeNotes: includeNotes, includeClock: includeClock, includeSensing: includeSensing) }; Spacer(); Text("A \(model.captureA.count) · B \(model.captureB.count)").foregroundStyle(.secondary) }
             Table(model.diff) {
                 TableColumn("Mudança") { item in Text(item.kind.rawValue.capitalized) }.width(90)
                 TableColumn("Mensagem") { item in Text(item.label) }
-                TableColumn("A") { item in Text(item.before ?? "—").font(.system(.body, design: .monospaced)) }.width(120)
-                TableColumn("B") { item in Text(item.after ?? "—").font(.system(.body, design: .monospaced)) }.width(120)
+                TableColumn("A") { item in Text(item.before ?? "Vazio").font(.system(.body, design: .monospaced)) }.width(120)
+                TableColumn("B") { item in Text(item.after ?? "Vazio").font(.system(.body, design: .monospaced)) }.width(120)
             }
         }
     }
@@ -198,7 +214,7 @@ struct ExperimentsView: View {
     @State private var songBook = 9_000
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PageHeader(title: "Experimentos / Evidências", subtitle: "Todos começam Draft. Promoção exige bytes, firmware, configuração e confirmação física.")
+            PageHeader(title: "Experimentos e evidências", subtitle: "Todos começam como rascunho. A promoção exige bytes, firmware, configuração e confirmação física.")
             HStack { Button(model.isAudioRecording ? "Encerrar clipe" : "Gravar clipe WAV", systemImage: "mic") { model.toggleAudio() }.buttonStyle(.borderedProminent); Text("\(model.audioEvidence.count) clipes • mono 48 kHz").foregroundStyle(.secondary); Spacer() }
             List {
                 ExperimentRow(number: 1, title: "Identidade", detail: "Esperado: fabricante 42 · família 0060 · modelo 005D", state: model.identityVerified ? "Verified" : "Draft", action: { model.queryIdentity() }, actionTitle: "Consultar")
@@ -261,7 +277,7 @@ struct ExperimentsView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ExperimentRow(number: 6, title: "Preset exato A–B–A", detail: "Descobrir CC0.CC32.PC por captura; A repetido deve ser espectralmente mais próximo", state: model.devicePresetVerified ? "Verified" : "Draft", action: nil, actionTitle: nil)
+                    ExperimentRow(number: 6, title: "Preset exato A/B/A", detail: "Descobrir CC0.CC32.PC por captura; A repetido deve ser espectralmente mais próximo", state: model.devicePresetVerified ? "Verified" : "Draft", action: nil, actionTitle: nil)
                     HStack { Stepper("CC0 \(bankMSB)", value: $bankMSB, in: 0...127); Stepper("CC32 \(bankLSB)", value: $bankLSB, in: 0...127); Stepper("PC \(program)", value: $program, in: 0...127); Button("Enviar observado") { model.sendPresetLab(bankMSB: bankMSB, bankLSB: bankLSB, program: program) }; Button("Confirmar nome") { model.confirm("Displayed preset name matched captured bank/program") } }.padding(.leading, 42)
                 }
                 ExperimentRow(number: 7, title: "Arranger Start / Stop", detail: "Defina External USB temporariamente, clock 120 BPM + Start/Stop, depois restaure Internal", state: model.arrangerTransportVerified ? "Verified" : "Draft", action: { model.startClock() }, secondary: { model.stopClock() }, actionTitle: "Start 120 BPM")
@@ -270,7 +286,7 @@ struct ExperimentsView: View {
                     HStack { Stepper("Número \(songBook)", value: $songBook, in: 0...9_999); Button("Selecionar") { model.sendSongBook(songBook) }; Button("Confirmar entrada") { model.confirm("Displayed SongBook entry matched requested number \(songBook)") } }.padding(.leading, 42)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ExperimentRow(number: 9, title: "Elementos do Arranger", detail: "Canal Control 16 · PC80–94 · Intro, Variation, Fill, Break e Ending", state: "\(ArrangerElement.allCases.filter { model.profile.mappings[$0.mappingID]?.status == .verified }.count)/\(ArrangerElement.allCases.count) Verified", action: nil, actionTitle: nil)
+                    ExperimentRow(number: 9, title: "Elementos do Arranger", detail: "Canal Control 16 · PC80 a PC94 · Intro, Variation, Fill, Break e Ending", state: "\(ArrangerElement.allCases.filter { model.profile.mappings[$0.mappingID]?.status == .verified }.count)/\(ArrangerElement.allCases.count) Verified", action: nil, actionTitle: nil)
                     HStack {
                         Menu("Enviar elemento…") {
                             ForEach(ArrangerElement.allCases, id: \.self) { element in
@@ -281,13 +297,13 @@ struct ExperimentsView: View {
                     }.padding(.leading, 42)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ExperimentRow(number: 10, title: "Keyboard Set 1–4", detail: "Canal Control 16 · PC64–67 · usa o Style ou SongBook selecionado", state: model.profile.mappings["keyboardSet"]?.status.rawValue ?? "Draft", action: nil, actionTitle: nil)
+                    ExperimentRow(number: 10, title: "Keyboard Set 1 a 4", detail: "Canal Control 16 · PC64 a PC67 · usa o Style ou SongBook selecionado", state: model.profile.mappings["keyboardSet"]?.status.rawValue ?? "Draft", action: nil, actionTitle: nil)
                     HStack {
                         ForEach(1...4, id: \.self) { slot in Button("Kbd Set \(slot)") { model.sendKeyboardSet(slot) } }
                     }.padding(.leading, 42)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ExperimentRow(number: 11, title: "Controles do Arranger / Player", detail: "Canal Control 16 · PC95–104 · comandos contextuais e toggles", state: "\(ArrangerControl.allCases.filter { model.profile.mappings[$0.mappingID]?.status == .verified }.count)/\(ArrangerControl.allCases.count) Verified", action: nil, actionTitle: nil)
+                    ExperimentRow(number: 11, title: "Controles do Arranger / Player", detail: "Canal Control 16 · PC95 a PC104 · comandos contextuais e toggles", state: "\(ArrangerControl.allCases.filter { model.profile.mappings[$0.mappingID]?.status == .verified }.count)/\(ArrangerControl.allCases.count) Verified", action: nil, actionTitle: nil)
                     HStack {
                         Menu("Enviar controle…") {
                             ForEach(ArrangerControl.allCases, id: \.self) { control in

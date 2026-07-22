@@ -4,6 +4,38 @@ import ArrangerLabCore
 import ArrangerLabMIDI
 import Foundation
 
+private final class MIDIEventBatcher: @unchecked Sendable {
+    var onBatch: (@MainActor @Sendable ([MIDIEvent]) -> Void)?
+
+    private let lock = NSLock()
+    private var pending: [MIDIEvent] = []
+    private var deliveryScheduled = false
+
+    func enqueue(_ event: MIDIEvent) {
+        lock.lock()
+        pending.append(event)
+        let shouldSchedule = !deliveryScheduled
+        deliveryScheduled = true
+        lock.unlock()
+
+        guard shouldSchedule else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100)) { [weak self] in
+            guard let self else { return }
+            let batch = self.drain()
+            if !batch.isEmpty { self.onBatch?(batch) }
+        }
+    }
+
+    func drain() -> [MIDIEvent] {
+        lock.lock()
+        let batch = pending
+        pending.removeAll(keepingCapacity: true)
+        deliveryScheduled = false
+        lock.unlock()
+        return batch
+    }
+}
+
 struct PerformanceIntentChange: Identifiable, Equatable {
     let label: String
     let previousValue: String
@@ -53,7 +85,8 @@ final class AppModel: ObservableObject {
     @Published var destinations: [MIDIEndpoint] = []
     @Published var selectedSourceID: Int32?
     @Published var selectedDestinationID: Int32?
-    @Published var events: [MIDIEvent] = []
+    @Published private(set) var monitorEvents: [MIDIEvent] = []
+    @Published private(set) var totalEventCount = 0
     @Published var captureA: [MIDIEvent] = []
     @Published var captureB: [MIDIEvent] = []
     @Published var diff: [CaptureDiffItem] = []
@@ -158,6 +191,9 @@ final class AppModel: ObservableObject {
     let driver: PA700Driver
     private(set) var transport: MIDITransport?
     private let audioRecorder = AudioEvidenceRecorder()
+    private let eventBatcher = MIDIEventBatcher()
+    private var events: [MIDIEvent] = []
+    private var monitorEventBuffer: [MIDIEvent] = []
     private var recordingStartIndex = 0
     private var currentAudioURL: URL?
     private var audioSourceURLs: [UUID: URL] = [:]
@@ -172,6 +208,7 @@ final class AppModel: ObservableObject {
     private var damperEventsStartIndex = 0
     private var batchCollector: BatchSoundCollector?
     private var catalogValidationTask: Task<Void, Never>?
+    private var pendingShowPersistenceTask: Task<Void, Never>?
     private var catalogValidationEventStartIndex = 0
     private var catalogValidationEntries: [BatchSoundEntry] = []
     private var catalogValidationAudioEvidence: AudioEvidenceRecord?
@@ -310,7 +347,7 @@ final class AppModel: ObservableObject {
     var arrangerTransportPasses: Bool { !arrangerTransportChecks.isEmpty && arrangerTransportChecks.values.allSatisfy { $0 } }
     var songBookPasses: Bool { !songBookVerificationChecks.isEmpty && songBookVerificationChecks.values.allSatisfy { $0 } }
     var visibleEvents: [MIDIEvent] {
-        events.filter { event in
+        monitorEvents.filter { event in
             guard let message = event.message else { return true }
             if filterClock, message == .realtime(0xF8) { return false }
             if filterActiveSensing, message == .realtime(0xFE) { return false }
@@ -324,6 +361,9 @@ final class AppModel: ObservableObject {
         do {
             let transport = try MIDITransport()
             self.transport = transport
+            eventBatcher.onBatch = { [weak self] batch in
+                self?.receive(batch)
+            }
             transport.onEndpointsChanged = { [weak self] sources, destinations in
                 DispatchQueue.main.async {
                     guard let self else { return }
@@ -342,7 +382,7 @@ final class AppModel: ObservableObject {
                     } catch { self.fail(error) }
                 }
             }
-            transport.onEvent = { [weak self] event in DispatchQueue.main.async { self?.receive(event) } }
+            transport.onEvent = { [weak eventBatcher] event in eventBatcher?.enqueue(event) }
             transport.onFailure = { [weak self] error in DispatchQueue.main.async { self?.fail(error) } }
             sources = transport.sources; destinations = transport.destinations
             if try transport.autoConnectPA700() {
@@ -584,6 +624,7 @@ final class AppModel: ObservableObject {
                 let url = base.appendingPathComponent("catalog-fast-validation-\(UUID().uuidString).wav")
                 try audioRecorder.start(to: url)
                 catalogValidationAudioSourceURL = url
+                flushPendingMIDIEvents()
                 catalogValidationEventStartIndex = events.count
 
                 // A short quiet prefix makes the single continuous WAV easier to audit.
@@ -639,6 +680,7 @@ final class AppModel: ObservableObject {
 
     func confirmFastCatalogValidation(heard: Bool) {
         guard catalogValidationAwaitingConfirmation else { return }
+        flushPendingMIDIEvents()
         catalogValidationAwaitingConfirmation = false
         let confirmation = ManualConfirmation(
             prompt: "Representative PA700 catalogue bank sweep was audible",
@@ -701,7 +743,7 @@ final class AppModel: ObservableObject {
             if let source = catalogValidationAudioSourceURL {
                 try FileManager.default.copyItem(at: source, to: url.appendingPathComponent(evidence.relativePath))
             }
-            try CaptureExporter.csv(events: sweepEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: sweepEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: sweepEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             catalogValidationExperimentURL = url
             catalogValidationVerified = true
@@ -777,7 +819,7 @@ final class AppModel: ObservableObject {
                     try FileManager.default.copyItem(at: source, to: destination)
                 }
             }
-            try CaptureExporter.csv(events: sweep.events).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: sweep.events, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: sweep.events).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
 
             let promoted = collector.markAllVerifiedBySampling(experimentPath: url.path, now: now)
@@ -816,17 +858,45 @@ final class AppModel: ObservableObject {
     func unlockExpert(typedModel: String) { do { try expert.unlock(typedModel: typedModel, connectedModel: profile.model); status = "Expert ativo até desconectar ou fechar" } catch { fail(error) } }
 
     func toggleRecording() {
-        if isRecording { isRecording = false; status = "Captura encerrada: \(events.count - recordingStartIndex) eventos" }
-        else { recordingStartIndex = events.count; isRecording = true; status = "Gravando MIDI bidirecional" }
+        if isRecording {
+            flushPendingMIDIEvents()
+            isRecording = false
+            status = "Captura encerrada: \(events.count - recordingStartIndex) eventos"
+        }
+        else {
+            flushPendingMIDIEvents()
+            recordingStartIndex = events.count
+            isRecording = true
+            status = "Gravando MIDI bidirecional"
+        }
     }
-    func markCaptureA() { captureA = Array(events.dropFirst(recordingStartIndex)); updateDiff(); status = "Estado A guardado" }
-    func markCaptureB() { captureB = Array(events.dropFirst(recordingStartIndex)); updateDiff(); status = "Estado B guardado" }
-    func clearEvents() { events.removeAll(); recordingStartIndex = 0; diff.removeAll() }
+    func markCaptureA() {
+        flushPendingMIDIEvents()
+        captureA = Array(events.dropFirst(recordingStartIndex))
+        updateDiff()
+        status = "Estado A guardado"
+    }
+    func markCaptureB() {
+        flushPendingMIDIEvents()
+        captureB = Array(events.dropFirst(recordingStartIndex))
+        updateDiff()
+        status = "Estado B guardado"
+    }
+    func clearEvents() {
+        _ = eventBatcher.drain()
+        events.removeAll(keepingCapacity: true)
+        monitorEventBuffer.removeAll(keepingCapacity: true)
+        monitorEvents.removeAll(keepingCapacity: true)
+        totalEventCount = 0
+        resetCaptureCursors()
+        diff.removeAll()
+    }
     func updateDiff(includeNotes: Bool = false, includeClock: Bool = false, includeSensing: Bool = false) {
         diff = CaptureDiffer.compare(captureA, captureB, options: .init(includeNotes: includeNotes, includeClock: includeClock, includeActiveSensing: includeSensing))
     }
 
     func replayCurrent() {
+        flushPendingMIDIEvents()
         let replayEvents = Array(events.dropFirst(recordingStartIndex))
         let speed = replaySpeed
         let midi = transport
@@ -854,6 +924,7 @@ final class AppModel: ObservableObject {
         arrangerAudioEvidence = nil
         arrangerAudioSourceURL = nil
         arrangerTransportChecks.removeAll()
+        flushPendingMIDIEvents()
         arrangerEventsStartIndex = events.count
         clockRestoreRequired = true
         UserDefaults.standard.set(true, forKey: "arrangerlab.clockRestoreRequired")
@@ -952,6 +1023,7 @@ final class AppModel: ObservableObject {
     }
 
     func saveArrangerTransportVerification() {
+        flushPendingMIDIEvents()
         updateArrangerTransportChecks()
         guard arrangerTransportPasses, let evidence = arrangerAudioEvidence else {
             status = "Ainda faltam critérios para salvar o Arranger Start/Stop como Verified"
@@ -994,7 +1066,7 @@ final class AppModel: ObservableObject {
             if let source = arrangerAudioSourceURL {
                 try FileManager.default.copyItem(at: source, to: url.appendingPathComponent(evidence.relativePath))
             }
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             arrangerTransportVerified = true
             arrangerTransportExperimentURL = url
@@ -1003,6 +1075,7 @@ final class AppModel: ObservableObject {
     }
 
     private func updateArrangerTransportChecks() {
+        flushPendingMIDIEvents()
         let capturedEvents = Array(events.dropFirst(arrangerEventsStartIndex))
         arrangerTransportChecks = MappingEvidenceVerifier.arrangerTransport(
             events: capturedEvents,
@@ -1018,6 +1091,7 @@ final class AppModel: ObservableObject {
     }
 
     func saveExperiment() {
+        flushPendingMIDIEvents()
         do {
             let base = try ArrLabPackage.applicationSupportDirectory()
             let url = base.appendingPathComponent("Experiment-\(ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-"))", isDirectory: true).appendingPathExtension("arrlab")
@@ -1047,7 +1121,7 @@ final class AppModel: ObservableObject {
                     try FileManager.default.copyItem(at: source, to: destination)
                 }
             }
-            try CaptureExporter.csv(events: events).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: events, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: events).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             lastSavedExperimentURL = url
             status = mappingStatus == .verified
@@ -1079,6 +1153,8 @@ final class AppModel: ObservableObject {
 
     func terminate() {
         catalogValidationTask?.cancel()
+        flushPendingShowPersistence()
+        _ = eventBatcher.drain()
         isBatchMapping = false
         saveBatchCatalogSilently()
         audioRecorder.stopSilently()
@@ -1110,7 +1186,10 @@ final class AppModel: ObservableObject {
     func recordSilenceCalibration() { runGuidedAudio(kind: .silence) }
     func recordVolumeEvidence(level: Int) { runGuidedAudio(kind: .volume(level)) }
     func recordExpressionEvidence(level: Int) {
-        if expressionEvidenceByLevel.isEmpty { expressionEventsStartIndex = events.count }
+        if expressionEvidenceByLevel.isEmpty {
+            flushPendingMIDIEvents()
+            expressionEventsStartIndex = events.count
+        }
         runGuidedAudio(kind: .expression(level))
     }
 
@@ -1455,6 +1534,8 @@ final class AppModel: ObservableObject {
                 id: candidate.id,
                 songTitle: candidate.songTitle.trimmingCharacters(in: .whitespacesAndNewlines),
                 songBookNumber: candidate.songBookNumber,
+                arrangerStyleID: candidate.arrangerStyleID,
+                keyboardSetSlot: candidate.keyboardSetSlot,
                 transposeSemitones: candidate.transposeSemitones,
                 parts: cleanedParts,
                 effectsSummary: candidate.effectsSummary.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -1463,6 +1544,7 @@ final class AppModel: ObservableObject {
                 source: candidate.source,
                 chartLines: candidate.chartLines,
                 readerSettings: candidate.readerSettings,
+                chartAnnotations: candidate.chartAnnotations,
                 confirmedAt: candidate.confirmedAt,
                 createdAt: existing?.createdAt ?? candidate.createdAt,
                 updatedAt: now
@@ -1511,6 +1593,18 @@ final class AppModel: ObservableObject {
             showStatus = "Conecte o PA700 para testar este preset"
             return false
         }
+        if preset.hasDirectSetup {
+            do {
+                try transport?.sendScheduled(compileDirectShowSetup(preset))
+                pendingShowConfirmationID = nil
+                showStatus = "\(preset.songTitle) preparada diretamente no PA700"
+                return true
+            } catch {
+                showStatus = "Falha ao testar \(preset.songTitle)"
+                fail(error)
+                return false
+            }
+        }
         guard let songBookNumber = preset.songBookNumber else {
             showStatus = "Defina o número SongBook antes de testar \(preset.songTitle)"
             return false
@@ -1543,8 +1637,8 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func applyShowPreset(_ preset: ShowPreset, setListItemID: UUID? = nil) -> Bool {
-        guard preset.isConfirmed, let songBookNumber = preset.songBookNumber else {
-            showStatus = "\(preset.songTitle) ainda não foi confirmado no PA700"
+        guard preset.isReadyToPlay else {
+            showStatus = "\(preset.songTitle) ainda não tem uma configuração operacional"
             return false
         }
         guard connected else {
@@ -1553,17 +1647,50 @@ final class AppModel: ObservableObject {
             return false
         }
         do {
-            try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
+            if preset.hasDirectSetup {
+                try transport?.sendScheduled(compileDirectShowSetup(preset))
+            } else if let songBookNumber = preset.songBookNumber {
+                try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
+            } else {
+                throw ArrangerLabError.invalidValue("show preset has no operational setup")
+            }
             activeShowPresetID = preset.id
             activeShowSetListItemID = setListItemID
             lastShowAppliedAt = Date()
-            showStatus = "\(preset.songTitle) aplicada · SongBook \(songBookNumber)"
+            if preset.hasDirectSetup {
+                let sound = preset.parts.first(where: { $0.part == .upper1 })?.displayName ?? "Kbd \(preset.keyboardSetSlot ?? 0)"
+                showStatus = "\(preset.songTitle) pronta · JPD · \(sound) · Transpose \(preset.transposeSemitones)"
+            } else {
+                showStatus = "\(preset.songTitle) aplicada · SongBook \(preset.songBookNumber ?? 0)"
+            }
             status = showStatus
             return true
         } catch {
             showStatus = "Falha ao aplicar \(preset.songTitle); a música ativa não mudou"
             fail(error)
             return false
+        }
+    }
+
+    private func compileDirectShowSetup(_ preset: ShowPreset) throws -> [ScheduledMIDIMessage] {
+        guard let styleID = preset.arrangerStyleID, let slot = preset.keyboardSetSlot else {
+            throw ArrangerLabError.invalidValue("direct show setup is incomplete")
+        }
+        let style = try driver.compile(.selectArrangerStyle(styleID: styleID), allowDraft: false)
+        let keyboardSet = try driver.compile(.selectKeyboardSet(slot: slot), allowDraft: false)
+        let transpose = try driver.compile(.setMasterTranspose(semitones: preset.transposeSemitones), allowDraft: false)
+        return shifted(style, by: 0)
+            + shifted(keyboardSet, by: 100_000_000)
+            + shifted(transpose, by: 150_000_000)
+    }
+
+    private func shifted(_ messages: [ScheduledMIDIMessage], by offset: UInt64) -> [ScheduledMIDIMessage] {
+        messages.map {
+            ScheduledMIDIMessage(
+                offsetNanoseconds: offset + $0.offsetNanoseconds,
+                message: $0.message,
+                mappingID: $0.mappingID
+            )
         }
     }
 
@@ -1654,6 +1781,35 @@ final class AppModel: ObservableObject {
 
     func openShowPresetForReading(_ preset: ShowPreset) {
         showStatus = "\(preset.songTitle) aberta para leitura · não enviada ao PA700"
+    }
+
+    func updateShowAnnotations(presetID: UUID, annotations: [ShowChartAnnotation]) {
+        guard let index = showPresets.firstIndex(where: { $0.id == presetID }) else { return }
+        do {
+            try annotations.forEach { try $0.validate() }
+            var updated = showPresets
+            updated[index].chartAnnotations = annotations
+            updated[index].updatedAt = Date()
+            showPresets = updated
+            pendingShowPersistenceTask?.cancel()
+            pendingShowPersistenceTask = Task { [weak self] in
+                do {
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    guard !Task.isCancelled, let self else { return }
+                    try self.persistShowPresets(self.showPresets)
+                    self.pendingShowPersistenceTask = nil
+                } catch is CancellationError {
+                    return
+                } catch {
+                    guard let self else { return }
+                    self.showStatus = "Não foi possível salvar as anotações"
+                    self.fail(error)
+                }
+            }
+        } catch {
+            showStatus = "Não foi possível salvar as anotações"
+            fail(error)
+        }
     }
 
     @discardableResult
@@ -1797,6 +1953,7 @@ final class AppModel: ObservableObject {
                 let audioURL = base.appendingPathComponent("audition-\(UUID().uuidString).wav")
                 try audioRecorder.start(to: audioURL)
                 auditionAudioSourceURL = audioURL
+                flushPendingMIDIEvents()
                 auditionEventStartIndex = events.count
 
                 let channel = try auditionChannel(for: target)
@@ -1873,6 +2030,7 @@ final class AppModel: ObservableObject {
             auditionMessage = "Evidência de áudio insuficiente; ouça novamente"
             return
         }
+        flushPendingMIDIEvents()
 
         do {
             let now = Date()
@@ -1923,7 +2081,7 @@ final class AppModel: ObservableObject {
             )
             try ArrLabPackage.save(.init(manifest: manifest, events: capturedEvents, analysis: analysis), to: url)
             try FileManager.default.copyItem(at: source, to: url.appendingPathComponent(evidence.relativePath))
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             if var collector = batchCollector {
                 collector.markVerified(id: id, experimentPath: url.path)
@@ -1979,6 +2137,7 @@ final class AppModel: ObservableObject {
         songBookSentNumber = nil
         songBookDisplayedName = ""
         songBookVerificationChecks.removeAll()
+        flushPendingMIDIEvents()
         songBookEventsStartIndex = events.count
         confirm("PA700 was in Style Play before SongBook selection")
         status = "Style Play confirmado; pronto para selecionar SongBook 9000"
@@ -1988,6 +2147,7 @@ final class AppModel: ObservableObject {
         guard songBookStylePlayConfirmed else { status = "Confirme primeiro que o PA700 está em Style Play"; return }
         guard connected else { fail(ArrangerLabError.endpointUnavailable); return }
         guard number == 9_000 else { status = "Este experimento usa a entrada dedicada 9000"; return }
+        flushPendingMIDIEvents()
         songBookEventsStartIndex = events.count
         do {
             try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: number), allowDraft: true))
@@ -2011,6 +2171,7 @@ final class AppModel: ObservableObject {
     }
 
     func saveSongBookVerification() {
+        flushPendingMIDIEvents()
         updateSongBookChecks()
         guard songBookPasses, let number = songBookSentNumber else {
             status = "Ainda faltam critérios para salvar SongBook como Verified"
@@ -2047,7 +2208,7 @@ final class AppModel: ObservableObject {
                 spectralDistances: [:]
             )
             try ArrLabPackage.save(.init(manifest: manifest, events: capturedEvents, analysis: analysis), to: url)
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             songBookVerified = true
             songBookExperimentURL = url
@@ -2060,6 +2221,7 @@ final class AppModel: ObservableObject {
             songBookVerificationChecks = [:]
             return
         }
+        flushPendingMIDIEvents()
         songBookVerificationChecks = MappingEvidenceVerifier.songBook(
             events: Array(events.dropFirst(songBookEventsStartIndex)),
             number: number,
@@ -2079,7 +2241,7 @@ final class AppModel: ObservableObject {
         let notes = [60, 64, 67, 72]
         Task {
             for note in notes { sendNote(channel: 1, note: note, velocity: 80); try? await Task.sleep(nanoseconds: 450_000_000) }
-            status = "Estímulo fixo C4–E4–G4–C5 concluído"
+            status = "Estímulo fixo C4/E4/G4/C5 concluído"
         }
     }
 
@@ -2097,6 +2259,7 @@ final class AppModel: ObservableObject {
 
     func confirmExpressionAndSave() {
         confirm("Expression right/layer 1 audibly changed")
+        flushPendingMIDIEvents()
         let verification = partExpressionVerification
         guard verification.passed else {
             status = "Expression ainda não passou por bytes, áudio, preset, identidade e confirmação"
@@ -2136,7 +2299,7 @@ final class AppModel: ObservableObject {
                 if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
                 try FileManager.default.copyItem(at: source, to: destination)
             }
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             persistedPartExpressionEvidenceReady = true
             partExpressionExperimentURL = url
@@ -2146,12 +2309,16 @@ final class AppModel: ObservableObject {
 
     func recordPanEvidence(position: Int) {
         guard [-100, 0, 100].contains(position) else { return }
-        if panEvidenceByPosition.isEmpty { panEventsStartIndex = events.count }
+        if panEvidenceByPosition.isEmpty {
+            flushPendingMIDIEvents()
+            panEventsStartIndex = events.count
+        }
         runGuidedAudio(kind: .pan(position))
     }
 
     func confirmPanAndSave() {
         confirm("Pan right/layer 1 moved left, center and right")
+        flushPendingMIDIEvents()
         let verification = partPanVerification
         guard verification.passed else {
             status = "Pan ainda não passou por bytes, áudio, preset, identidade e confirmação estéreo"
@@ -2192,7 +2359,7 @@ final class AppModel: ObservableObject {
                 if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
                 try FileManager.default.copyItem(at: source, to: destination)
             }
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             persistedPartPanEvidenceReady = true
             partPanExperimentURL = url
@@ -2204,6 +2371,7 @@ final class AppModel: ObservableObject {
         guard activeGuideAction == nil else { return }
         guard connected else { fail(ArrangerLabError.endpointUnavailable); return }
         guard presetConfigured else { status = "Confirme primeiro o preset MIDI no PA700"; return }
+        flushPendingMIDIEvents()
         damperEventsStartIndex = events.count
         damperTestCompleted = false
         activeGuideAction = "Teste Damper: nota seca, depois nota sustentada"
@@ -2244,6 +2412,7 @@ final class AppModel: ObservableObject {
 
     func confirmDamperAndSave() {
         confirm("Damper right/layer 1 sustained the second note and released on OFF")
+        flushPendingMIDIEvents()
         let verification = partDamperVerification
         guard verification.passed else {
             status = "Damper ainda não passou por CC64 OFF/ON/OFF, áudio, preset, identidade e confirmação"
@@ -2252,6 +2421,7 @@ final class AppModel: ObservableObject {
         do {
             let target = try KeyboardPartTarget(zone: .right, layer: 1)
             try transport?.sendScheduled(driver.compile(.setPartDamper(target: target, engaged: false), allowDraft: true))
+            flushPendingMIDIEvents()
             let base = try ArrLabPackage.applicationSupportDirectory()
             let timestamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
             let url = base.appendingPathComponent("Part-Damper-\(timestamp)", isDirectory: true).appendingPathExtension("arrlab")
@@ -2282,7 +2452,7 @@ final class AppModel: ObservableObject {
                 if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
                 try FileManager.default.copyItem(at: source, to: destination)
             }
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             persistedPartDamperEvidenceReady = true
             partDamperExperimentURL = url
@@ -2306,6 +2476,7 @@ final class AppModel: ObservableObject {
             break
         }
         pendingPresetPhase = phase
+        flushPendingMIDIEvents()
         presetCaptureStartIndex = events.count
         status = "\(phase.instruction); depois confirme no app"
     }
@@ -2314,6 +2485,7 @@ final class AppModel: ObservableObject {
         let name = displayedName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard pendingPresetPhase == phase else { status = "Clique primeiro em Preparar \(phase.rawValue)"; return }
         guard !name.isEmpty else { status = "Digite o nome exatamente como aparece no PA700"; return }
+        flushPendingMIDIEvents()
         let selectionEvents = Array(events.dropFirst(presetCaptureStartIndex))
         guard let selection = MIDIProgramSelectionExtractor.lastComplete(in: selectionEvents, direction: .input, channel: 0) else {
             status = "Nenhum CC0 + CC32 + PC completo chegou do Upper1; selecione o timbre novamente"
@@ -2329,6 +2501,7 @@ final class AppModel: ObservableObject {
                 try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
                 let url = base.appendingPathComponent("preset-\(phase.rawValue)-\(UUID().uuidString).wav")
                 try audioRecorder.start(to: url)
+                flushPendingMIDIEvents()
                 let stimulusStartIndex = events.count
                 try transport?.sendScheduled(driver.compile(.setPartVolume(target: try .init(zone: .right, layer: 1), level: 0.75)))
                 try await Task.sleep(nanoseconds: 250_000_000)
@@ -2340,6 +2513,7 @@ final class AppModel: ObservableObject {
                 }
                 try await Task.sleep(nanoseconds: 250_000_000)
                 let evidence = try audioRecorder.stop()
+                flushPendingMIDIEvents()
                 presetSelections[phase] = selection
                 presetDisplayedNames[phase] = name
                 presetAudioEvidence[phase] = evidence
@@ -2447,7 +2621,7 @@ final class AppModel: ObservableObject {
                 if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
                 try FileManager.default.copyItem(at: source, to: destination)
             }
-            try CaptureExporter.csv(events: capturedEvents).write(to: url.appendingPathComponent("export.csv"), atomically: true, encoding: .utf8)
+            try CaptureExporter.writeCSV(events: capturedEvents, to: url.appendingPathComponent("export.csv"))
             try CaptureExporter.smf(events: capturedEvents).write(to: url.appendingPathComponent("export.mid"), options: .atomic)
             presetExperimentURL = url
             persistedPresetSummary = notes.first ?? ""
@@ -2554,17 +2728,18 @@ final class AppModel: ObservableObject {
         }
     }
 
-    private func receive(_ event: MIDIEvent) {
-        events.append(event)
-        if isBatchMapping { consumeBatchMappingEvent(event) }
-        if events.count > 50_000 {
-            events.removeFirst(5_000)
-            recordingStartIndex = max(0, recordingStartIndex - 5_000)
-            presetCaptureStartIndex = max(0, presetCaptureStartIndex - 5_000)
-            arrangerEventsStartIndex = max(0, arrangerEventsStartIndex - 5_000)
-            songBookEventsStartIndex = max(0, songBookEventsStartIndex - 5_000)
+    private func receive(_ batch: [MIDIEvent]) {
+        events.append(contentsOf: batch)
+        monitorEventBuffer.append(contentsOf: batch)
+        if monitorEventBuffer.count > 5_000 {
+            monitorEventBuffer.removeFirst(monitorEventBuffer.count - 5_000)
         }
-        if let message = event.message {
+        monitorEvents = monitorEventBuffer
+        totalEventCount = events.count
+
+        for event in batch {
+            if isBatchMapping { consumeBatchMappingEvent(event) }
+            guard let message = event.message else { continue }
             let identification = driver.identify(from: message)
             if identification.confidence == 1 {
                 identityResult = "PA700 confirmado • fabricante 42 • família 0060 • modelo 005D • firmware 1.5.0"
@@ -2580,6 +2755,35 @@ final class AppModel: ObservableObject {
                 ].compactMap { $0 }
                 status = verified.isEmpty ? "PA700 identificado" : "PA700 identificado • \(verified.joined(separator: " + ")) Verified"
             }
+        }
+    }
+
+    private func resetCaptureCursors() {
+        recordingStartIndex = 0
+        presetCaptureStartIndex = 0
+        arrangerEventsStartIndex = 0
+        songBookEventsStartIndex = 0
+        expressionEventsStartIndex = 0
+        panEventsStartIndex = 0
+        damperEventsStartIndex = 0
+        catalogValidationEventStartIndex = 0
+        auditionEventStartIndex = 0
+    }
+
+    private func flushPendingMIDIEvents() {
+        let batch = eventBatcher.drain()
+        if !batch.isEmpty { receive(batch) }
+    }
+
+    private func flushPendingShowPersistence() {
+        guard pendingShowPersistenceTask != nil else { return }
+        pendingShowPersistenceTask?.cancel()
+        pendingShowPersistenceTask = nil
+        do {
+            try persistShowPresets(showPresets)
+        } catch {
+            showStatus = "Não foi possível salvar as anotações"
+            lastError = error.localizedDescription
         }
     }
 
@@ -2892,8 +3096,7 @@ final class AppModel: ObservableObject {
             var restoredDamper = false
             var restoredCatalogValidation = false
             for url in urls {
-                guard let experiment = try? ArrLabPackage.load(from: url) else { continue }
-                let manifest = experiment.manifest
+                guard let manifest = try? ArrLabPackage.loadManifest(from: url) else { continue }
                 guard manifest.mappingStatus == .verified,
                       manifest.deviceState.model == profile.model,
                       manifest.deviceState.firmware == profile.firmware else { continue }
@@ -2906,8 +3109,10 @@ final class AppModel: ObservableObject {
                 if manifest.mappingID == "devicePreset", !restoredPreset {
                     devicePresetVerified = true
                     presetExperimentURL = url
-                    persistedPresetSummary = experiment.analysis.notes.first ?? ""
-                    presetABADistances = experiment.analysis.spectralDistances
+                    if let analysis = try? ArrLabPackage.loadAnalysis(from: url) {
+                        persistedPresetSummary = analysis.notes.first ?? ""
+                        presetABADistances = analysis.spectralDistances
+                    }
                     restoredPreset = true
                 }
                 if ["devicePreset.catalogAddressing", "devicePreset.catalog"].contains(manifest.mappingID), !restoredCatalogValidation {
@@ -2935,31 +3140,35 @@ final class AppModel: ObservableObject {
                         let value = annotation[separator.upperBound...] == "passed"
                         return (key, value)
                     })
-                    songBookDisplayedName = experiment.analysis.notes.first.flatMap { note in
-                        guard let range = note.range(of: "name=") else { return nil }
-                        return String(note[range.upperBound...].split(separator: ";").first ?? "")
-                    } ?? ""
+                    if let analysis = try? ArrLabPackage.loadAnalysis(from: url) {
+                        songBookDisplayedName = analysis.notes.first.flatMap { note in
+                            guard let range = note.range(of: "name=") else { return nil }
+                            return String(note[range.upperBound...].split(separator: ";").first ?? "")
+                        } ?? ""
+                    }
                     restoredSongBook = true
                 }
                 if manifest.mappingID == "partVolume", !restoredVolume {
-                    persistedPartVolumeVerified = true
-                    previousInputConfirmed = experiment.events.contains {
-                        guard $0.direction == .input, let message = $0.message else { return false }
-                        if case .noteOn = message { return true }
-                        return false
+                    if let experiment = try? ArrLabPackage.load(from: url) {
+                        persistedPartVolumeVerified = true
+                        previousInputConfirmed = experiment.events.contains {
+                            guard $0.direction == .input, let message = $0.message else { return false }
+                            if case .noteOn = message { return true }
+                            return false
+                        }
+                        previousOutputConfirmed = experiment.analysis.manualConfirmations.contains {
+                            $0.confirmed && $0.prompt == "Mac to PA700 C4 output was audible"
+                        }
+                        previousPresetConfirmed = experiment.analysis.manualConfirmations.contains {
+                            $0.confirmed && $0.prompt == "ArrangerLab MIDI preset configured"
+                        }
+                        let audio = experiment.analysis.audioEvidence
+                        if audio.count >= 4 {
+                            persistedVolumeRMSDBFS = Array(audio.dropFirst().prefix(3)).map(\.metrics.rmsDBFS)
+                        }
+                        lastSavedExperimentURL = url
+                        restoredVolume = true
                     }
-                    previousOutputConfirmed = experiment.analysis.manualConfirmations.contains {
-                        $0.confirmed && $0.prompt == "Mac to PA700 C4 output was audible"
-                    }
-                    previousPresetConfirmed = experiment.analysis.manualConfirmations.contains {
-                        $0.confirmed && $0.prompt == "ArrangerLab MIDI preset configured"
-                    }
-                    let audio = experiment.analysis.audioEvidence
-                    if audio.count >= 4 {
-                        persistedVolumeRMSDBFS = Array(audio.dropFirst().prefix(3)).map(\.metrics.rmsDBFS)
-                    }
-                    lastSavedExperimentURL = url
-                    restoredVolume = true
                 }
                 if manifest.mappingID == "partExpression", !restoredExpression {
                     persistedPartExpressionEvidenceReady = true
@@ -3023,7 +3232,7 @@ final class AppModel: ObservableObject {
         return oneBased - 1
     }
     private func send(_ message: MIDIMessage) { do { try transport?.send(message) } catch { fail(error) } }
-    private func fail(_ error: Error) { lastError = error.localizedDescription; status = "Falha — Panic preventivo enviado"; try? transport?.panic() }
+    private func fail(_ error: Error) { lastError = error.localizedDescription; status = "Falha; Panic preventivo enviado"; try? transport?.panic() }
     private func parseHex(_ value: String) throws -> [UInt8] {
         try value.split(whereSeparator: { $0 == " " || $0 == "," || $0 == "\n" }).map {
             guard let byte = UInt8($0, radix: 16) else { throw ArrangerLabError.invalidValue("invalid hex byte \($0)") }

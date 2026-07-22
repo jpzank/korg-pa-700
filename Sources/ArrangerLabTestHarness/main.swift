@@ -39,8 +39,8 @@ func run() throws {
     catch ArrangerLabError.invalidProfile { passed += 1; print("PASS  invalid profile rejected") }
     let driver = PA700Driver(profile: profile)
     let styleCatalog = try ArrangerStyleCatalog.bundledPA700()
-    try check(styleCatalog.styles.count == 379, "official PA700 factory Style catalog has 379 unique entries")
-    try check(Set(styleCatalog.styles.map(\.address)).count == 379, "factory Style MIDI addresses are unique")
+    try check(styleCatalog.styles.filter { $0.category != "User" }.count == 379, "official PA700 factory Style catalog has 379 unique entries")
+    try check(Set(styleCatalog.styles.map(\.address)).count == styleCatalog.styles.count, "factory and verified User Style MIDI addresses are unique")
     try check(styleCatalog.styles.contains(where: { $0.displayName == "Pop Hit" && $0.address == "0.0.21" }), "category-prefixed Style names are preserved")
     try check(styleCatalog.styles.contains(where: { $0.displayName == "Dance Pop Reload" && $0.address == "0.3.6" }), "multiword category-prefixed Style names are preserved")
     guard let brushBallad = styleCatalog.styles.first(where: { $0.displayName == "Brush Ballad" }) else {
@@ -54,6 +54,16 @@ func run() throws {
         .programChange(channel: 15, program: 4)
     ], "Verified Style selection compiles exact Control-channel bank/program sequence operationally")
     try check(profile.mappings["styleSelection"]?.status == .verified, "Style selection profile mapping is Verified")
+    guard let jpdStyle = styleCatalog.styles.first(where: { $0.id == "user-style-jpd" }) else {
+        throw HarnessFailure(description: "verified User Style JPD missing")
+    }
+    try check(jpdStyle.address == "2.10.0", "User Style JPD preserves the documented and physically verified address 2.10.0")
+    let jpdSelection = try driver.compile(.selectArrangerStyle(styleID: jpdStyle.id), allowDraft: false)
+    try check(jpdSelection.map(\.message) == [
+        .controlChange(channel: 15, controller: 0, value: 2),
+        .controlChange(channel: 15, controller: 32, value: 10),
+        .programChange(channel: 15, program: 0)
+    ], "Verified User Style JPD compiles exact Control-channel bytes")
     let keyboardSetLibrary = try KeyboardSetLibraryCatalog.bundledPA700()
     try check(keyboardSetLibrary.keyboardSets.count == 298, "official PA700 Keyboard Set Library has 298 unique factory entries")
     try check(Set(keyboardSetLibrary.keyboardSets.map(\.address)).count == 298, "factory Keyboard Set Library MIDI addresses are unique")
@@ -181,6 +191,9 @@ func run() throws {
             .init(kind: .lyrics, text: "Linha de teste")
         ],
         readerSettings: .init(showChords: true, fontScale: 1.15),
+        chartAnnotations: [
+            .init(text: "Entrar depois da contagem", normalizedX: 0.74, normalizedY: 0.20)
+        ],
         confirmedAt: sceneDate,
         createdAt: sceneDate,
         updatedAt: sceneDate
@@ -192,6 +205,10 @@ func run() throws {
     try ShowPresetStore.save([showPreset], to: showPresetURL)
     let loadedShowPresets = try ShowPresetStore.load(from: showPresetURL)
     try check(loadedShowPresets == [showPreset], "show preset schema v2 JSON round trip includes chart and source")
+    try check(
+        loadedShowPresets[0].chartAnnotations.first?.text == "Entrar depois da contagem",
+        "show preset preserves chart overlay annotations"
+    )
     try check(loadedShowPresets[0].source?.sourceURL == "https://example.com/repertorio", "show preset preserves optional web source metadata")
     try check(
         loadedShowPresets[0].parts[0].soundID == "ch1-121-64-1"
@@ -206,6 +223,10 @@ func run() throws {
     invalidShowPreset.transposeSemitones = 13
     do { try invalidShowPreset.validate(); throw HarnessFailure(description: "out-of-range show transpose accepted") }
     catch ArrangerLabError.invalidValue { passed += 1; print("PASS  show preset rejects transpose outside -12...12") }
+    invalidShowPreset = showPreset
+    invalidShowPreset.chartAnnotations[0].normalizedX = 1.1
+    do { try invalidShowPreset.validate(); throw HarnessFailure(description: "out-of-range chart annotation accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  show preset rejects annotation outside normalized canvas") }
     invalidShowPreset = showPreset
     invalidShowPreset.parts.removeLast()
     do { try invalidShowPreset.validate(); throw HarnessFailure(description: "show preset accepted missing Lower part") }
@@ -223,6 +244,21 @@ func run() throws {
     let parsedChart = ShowChartLine.parseEditorText(chartSource)
     try check(parsedChart.map(\.kind) == [.section, .chords, .lyrics, .space], "show chart editor parses section, chords, lyrics and space")
     try check(ShowChartLine.editorText(from: parsedChart) == chartSource, "show chart editor text round trip")
+    let chartWithImportArtifacts: [ShowChartLine] = [
+        .init(kind: .space, text: ""),
+        .init(kind: .section, text: "[Dedilhado]"),
+        .init(kind: .lyrics, text: "Parte 1 de 2"),
+        .init(kind: .space, text: ""),
+        .init(kind: .lyrics, text: "Parte 2 de 2"),
+        .init(kind: .space, text: ""),
+        .init(kind: .lyrics, text: "Parte de mim"),
+        .init(kind: .space, text: "")
+    ]
+    let cleanedChart = ShowChartLine.removingImportArtifacts(from: chartWithImportArtifacts)
+    try check(
+        cleanedChart.map(\.text) == ["[Dedilhado]", "", "Parte de mim"],
+        "show chart cleanup removes import pagination without deleting real lyrics"
+    )
     try check(ShowMusicTheory.transposedKey("G", by: 2) == "A", "show key calculator resolves the sounding major key")
     try check(ShowMusicTheory.transposedKey("F#m", by: -2) == "Em", "show key calculator preserves minor mode")
     try check(ShowMusicTheory.transposedKey("Bb", by: 2) == "C", "show key calculator preserves flat spelling preference")
@@ -242,6 +278,7 @@ func run() throws {
             """
             Minha Música
             Tom: G
+            Parte 1 de 2
             [Intro] G D Em C
             G D Em C
             Esta é a primeira linha
@@ -264,7 +301,8 @@ func run() throws {
     )
     try check(
         importedPDFPreset.chartLines.contains(where: { $0.kind == .chords && $0.text == "G D Em C" })
-            && importedPDFPreset.chartLines.contains(where: { $0.kind == .lyrics && $0.text == "Esta é a primeira linha" }),
+            && importedPDFPreset.chartLines.contains(where: { $0.kind == .lyrics && $0.text == "Esta é a primeira linha" })
+            && importedPDFPreset.chartLines.allSatisfy { !$0.isImportPaginationArtifact },
         "disposable PDF import separates chords from lyrics"
     )
 
@@ -297,6 +335,7 @@ func run() throws {
         migratedLegacyPresets.count == 1
             && migratedLegacyPresets[0].songBookNumber == 77
             && migratedLegacyPresets[0].chartLines.isEmpty
+            && migratedLegacyPresets[0].chartAnnotations.isEmpty
             && migratedLegacyPresets[0].source == nil,
         "show preset schema v1 loads with schema v2 defaults"
     )
@@ -389,6 +428,14 @@ func run() throws {
         },
         "Showboat catalog has optimized editable lyrics and chords without guitar-tab rows"
     )
+    guard let teVivoCatalogEntry = showboatCatalog.entries.first(where: { $0.songTitle == "Te Vivo" }) else {
+        throw HarnessFailure(description: "Te Vivo catalog entry missing")
+    }
+    let cleanedTeVivoPreset = showboatCatalog.preset(for: teVivoCatalogEntry, now: sceneDate)
+    try check(
+        cleanedTeVivoPreset.chartLines.allSatisfy { !$0.isImportPaginationArtifact },
+        "Showboat preset import removes pagination artifacts from the performance chart"
+    )
     let combinedCatalogMerge = showboatCatalog.merging(
         presets: firstCatalogMerge.presets,
         setLists: firstCatalogMerge.setLists,
@@ -459,7 +506,12 @@ func run() throws {
                 $0.parts.first(where: { $0.part == .upper1 })?.soundLibrary == "USER · JPD"
                     && $0.parts.filter { $0.part != .upper1 }.allSatisfy { !$0.isEnabled }
             },
-        "Showboat Piano Block A references USER JPD on Upper 1 without inventing a MIDI address"
+        "Showboat Piano Block A references USER JPD on Upper 1"
+    )
+    try check(
+        pianoBlockPresets.allSatisfy { $0.arrangerStyleID == "user-style-jpd" && $0.isReadyToPlay }
+            && pianoBlockPresets.map(\.keyboardSetSlot) == [1, 1, 1, 2, 2, 1, 1, 1, 1, 1],
+        "Showboat Piano Block A has one-click JPD Piano and Rhodes setups"
     )
     var locallyEditedBlock = preparedShowboat.presets
     guard let teVivoIndex = locallyEditedBlock.firstIndex(where: { $0.songTitle == "Te Vivo" }) else {
@@ -585,6 +637,10 @@ func run() throws {
     try check(operationalKeyboardSet2 == [.init(message: .programChange(channel: 15, program: 65), mappingID: "keyboardSet")], "Verified Keyboard Set 2 compiles operationally")
     do { _ = try driver.compile(.selectKeyboardSet(slot: 5), allowDraft: true); throw HarnessFailure(description: "invalid Keyboard Set slot accepted") }
     catch ArrangerLabError.invalidValue { passed += 1; print("PASS  invalid Keyboard Set slot rejected") }
+    let transposeMinus3 = try driver.compile(.setMasterTranspose(semitones: -3), allowDraft: false)
+    try check(transposeMinus3.map(\.message) == [.systemExclusive([0xF0, 0x7F, 0x7F, 0x04, 0x04, 0x00, 0x3D, 0xF7])], "Verified master transpose -3 compiles exact SysEx")
+    do { _ = try driver.compile(.setMasterTranspose(semitones: 13), allowDraft: false); throw HarnessFailure(description: "invalid master transpose accepted") }
+    catch ArrangerLabError.invalidValue { passed += 1; print("PASS  invalid master transpose rejected") }
     try check(driver.interpret(.programChange(channel: 15, program: 91)) == [.selectArrangerElement(.break)], "Control-channel PC91 interprets as Break")
     for control in ArrangerControl.allCases {
         let compiled = try driver.compile(.triggerArrangerControl(control), allowDraft: false)

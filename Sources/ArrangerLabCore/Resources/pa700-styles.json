@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "model": "PA700",
   "firmware": "1.5.0",
-  "source": "Korg PA700 User Manual v1.5, Musical Resources pages 942-947",
+  "source": "Korg PA700 User Manual v1.5 factory catalog plus physically verified USER style JPD",
   "styles": [
     {
       "id": "factory-style-0-0-0",
@@ -3035,6 +3035,14 @@
       "bankMSB": 0,
       "bankLSB": 11,
       "program": 35
+    },
+    {
+      "id": "user-style-jpd",
+      "displayName": "JPD",
+      "category": "User",
+      "bankMSB": 2,
+      "bankLSB": 10,
+      "program": 0
     }
   ]
 }

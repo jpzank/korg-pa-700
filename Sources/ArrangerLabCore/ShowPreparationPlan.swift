@@ -8,6 +8,8 @@ public struct BundledShowBlockEntry: Codable, Equatable, Sendable {
     public let transposeSemitones: Int
     public let upper1Sound: String
     public let soundLibrary: String
+    public let arrangerStyleID: String
+    public let keyboardSetSlot: Int
 }
 
 public struct BundledShowBlockPlan: Codable, Equatable, Sendable {
@@ -18,7 +20,18 @@ public struct BundledShowBlockPlan: Codable, Equatable, Sendable {
     public let setListID: UUID
     public let entries: [BundledShowBlockEntry]
 
+    private static let bundledPlans: Result<[BundledShowBlockPlan], Error> = Result {
+        [try loadShowboatJul23PianoBlockA()]
+    }
+
     public static func showboatJul23PianoBlockA() throws -> BundledShowBlockPlan {
+        guard let plan = try bundledPlans.get().first else {
+            throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 Piano Block A plan is missing")
+        }
+        return plan
+    }
+
+    private static func loadShowboatJul23PianoBlockA() throws -> BundledShowBlockPlan {
         guard let url = Bundle.module.url(
             forResource: "showboat-jul-23-piano-block-a",
             withExtension: "json"
@@ -28,14 +41,14 @@ public struct BundledShowBlockPlan: Codable, Equatable, Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let plan = try decoder.decode(BundledShowBlockPlan.self, from: Data(contentsOf: url))
-        guard plan.schemaVersion == 1, plan.entries.count == 10 else {
+        guard plan.schemaVersion == 2, plan.entries.count == 10 else {
             throw ArrangerLabError.corruptCapture("bundled Showboat Jul 23 Piano Block A plan is invalid")
         }
         return plan
     }
 
     public static func allBundled() throws -> [BundledShowBlockPlan] {
-        [try showboatJul23PianoBlockA()]
+        try bundledPlans.get()
     }
 
     public func merging(
@@ -66,6 +79,8 @@ public struct BundledShowBlockPlan: Codable, Equatable, Sendable {
                     let previous = preset
                     preset.originalKey = entry.originalKey
                     preset.transposeSemitones = entry.transposeSemitones
+                    preset.arrangerStyleID = entry.arrangerStyleID
+                    preset.keyboardSetSlot = entry.keyboardSetSlot
                     preset.parts = Self.parts(for: entry)
                     preset.notes = Self.notes(existing: preset.notes, planName: name, library: entry.soundLibrary)
                     if !preset.hasSameOperationalReference(as: previous) {
@@ -82,6 +97,8 @@ public struct BundledShowBlockPlan: Codable, Equatable, Sendable {
                 let preset = ShowPreset(
                     id: id,
                     songTitle: entry.songTitle,
+                    arrangerStyleID: entry.arrangerStyleID,
+                    keyboardSetSlot: entry.keyboardSetSlot,
                     transposeSemitones: entry.transposeSemitones,
                     parts: Self.parts(for: entry),
                     notes: Self.notes(existing: "", planName: name, library: entry.soundLibrary),

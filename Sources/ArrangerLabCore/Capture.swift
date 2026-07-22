@@ -312,6 +312,13 @@ public enum ArrLabPackage {
         return decoder
     }()
 
+    private static let eventEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
     public static func save(_ experiment: ArrLabExperiment, to url: URL) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: url, withIntermediateDirectories: true)
@@ -319,27 +326,92 @@ public enum ArrLabPackage {
         try encoder.encode(experiment.manifest).write(to: url.appendingPathComponent("manifest.json"), options: .atomic)
         try encoder.encode(experiment.analysis).write(to: url.appendingPathComponent("analysis.json"), options: .atomic)
 
-        let lines = try experiment.events.map { event -> String in
-            let data = try encoder.encode(event)
-            guard let line = String(data: data, encoding: .utf8) else { throw ArrangerLabError.corruptCapture("event encoding") }
-            return line.replacingOccurrences(of: "\n", with: "")
-        }
-        try (lines.joined(separator: "\n") + (lines.isEmpty ? "" : "\n")).write(to: url.appendingPathComponent("events.jsonl"), atomically: true, encoding: .utf8)
+        try writeEvents(experiment.events, to: url.appendingPathComponent("events.jsonl"))
     }
 
     public static func load(from url: URL) throws -> ArrLabExperiment {
         do {
-            let manifest = try decoder.decode(ArrLabManifest.self, from: Data(contentsOf: url.appendingPathComponent("manifest.json")))
-            guard manifest.schemaVersion == 1 else { throw ArrangerLabError.corruptCapture("unsupported schema") }
-            let analysis = try decoder.decode(ExperimentAnalysis.self, from: Data(contentsOf: url.appendingPathComponent("analysis.json")))
-            let content = try String(contentsOf: url.appendingPathComponent("events.jsonl"), encoding: .utf8)
-            let events = try content.split(whereSeparator: \ .isNewline).map { line in
-                guard let data = String(line).data(using: .utf8) else { throw ArrangerLabError.corruptCapture("invalid UTF-8") }
-                return try decoder.decode(MIDIEvent.self, from: data)
-            }
+            let manifest = try loadManifest(from: url)
+            let analysis = try loadAnalysis(from: url)
+            let events = try loadEvents(from: url)
             return .init(manifest: manifest, events: events, analysis: analysis)
         } catch let error as ArrangerLabError { throw error }
         catch { throw ArrangerLabError.corruptCapture(error.localizedDescription) }
+    }
+
+    public static func loadManifest(from url: URL) throws -> ArrLabManifest {
+        do {
+            let manifest = try decoder.decode(
+                ArrLabManifest.self,
+                from: Data(contentsOf: url.appendingPathComponent("manifest.json"))
+            )
+            guard manifest.schemaVersion == 1 else {
+                throw ArrangerLabError.corruptCapture("unsupported schema")
+            }
+            return manifest
+        } catch let error as ArrangerLabError { throw error }
+        catch { throw ArrangerLabError.corruptCapture(error.localizedDescription) }
+    }
+
+    public static func loadAnalysis(from url: URL) throws -> ExperimentAnalysis {
+        do {
+            return try decoder.decode(
+                ExperimentAnalysis.self,
+                from: Data(contentsOf: url.appendingPathComponent("analysis.json"))
+            )
+        } catch {
+            throw ArrangerLabError.corruptCapture(error.localizedDescription)
+        }
+    }
+
+    public static func loadEvents(from url: URL) throws -> [MIDIEvent] {
+        do {
+            let eventsURL = url.appendingPathComponent("events.jsonl")
+            let handle = try FileHandle(forReadingFrom: eventsURL)
+            defer { try? handle.close() }
+
+            var events: [MIDIEvent] = []
+            var pending = Data()
+            while let chunk = try handle.read(upToCount: 64 * 1_024), !chunk.isEmpty {
+                pending.append(chunk)
+                while let newline = pending.firstIndex(of: 0x0A) {
+                    var line = Data(pending[..<newline])
+                    pending.removeSubrange(...newline)
+                    if line.last == 0x0D { line.removeLast() }
+                    if !line.isEmpty { events.append(try decoder.decode(MIDIEvent.self, from: line)) }
+                }
+            }
+            if pending.last == 0x0D { pending.removeLast() }
+            if !pending.isEmpty { events.append(try decoder.decode(MIDIEvent.self, from: pending)) }
+            return events
+        } catch {
+            throw ArrangerLabError.corruptCapture(error.localizedDescription)
+        }
+    }
+
+    private static func writeEvents(_ events: [MIDIEvent], to url: URL) throws {
+        let fm = FileManager.default
+        let temporaryURL = url.deletingLastPathComponent()
+            .appendingPathComponent(".\(url.lastPathComponent).\(UUID().uuidString).tmp")
+        _ = fm.createFile(atPath: temporaryURL.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: temporaryURL)
+        do {
+            for event in events {
+                try handle.write(contentsOf: eventEncoder.encode(event))
+                try handle.write(contentsOf: Data([0x0A]))
+            }
+            try handle.synchronize()
+            try handle.close()
+            if fm.fileExists(atPath: url.path) {
+                _ = try fm.replaceItemAt(url, withItemAt: temporaryURL)
+            } else {
+                try fm.moveItem(at: temporaryURL, to: url)
+            }
+        } catch {
+            try? handle.close()
+            try? fm.removeItem(at: temporaryURL)
+            throw error
+        }
     }
 
     public static func applicationSupportDirectory() throws -> URL {
@@ -416,6 +488,38 @@ public enum CaptureExporter {
             rows.append("\(tick),\(bytes[0]),\(bytes[1]),\(bytes.count > 2 ? bytes[2] : 0)")
         }
         return rows.joined(separator: "\n") + "\n"
+    }
+
+    public static func writeCSV(events: [MIDIEvent], to url: URL, bpm: Double = 120, ppqn: Int = 480) throws {
+        let fm = FileManager.default
+        let temporaryURL = url.deletingLastPathComponent()
+            .appendingPathComponent(".\(url.lastPathComponent).\(UUID().uuidString).tmp")
+        _ = fm.createFile(atPath: temporaryURL.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: temporaryURL)
+        do {
+            try handle.write(contentsOf: Data("tick,status,data1,data2\n".utf8))
+            if let first = events.first?.timestampNanoseconds {
+                for event in events {
+                    let bytes = event.message?.canonicalBytes ?? event.rawBytes
+                    guard bytes.count >= 2, bytes[0] < 0xF0 else { continue }
+                    let seconds = Double(event.timestampNanoseconds - first) / 1_000_000_000
+                    let tick = Int((seconds * bpm * Double(ppqn) / 60).rounded())
+                    let row = "\(tick),\(bytes[0]),\(bytes[1]),\(bytes.count > 2 ? bytes[2] : 0)\n"
+                    try handle.write(contentsOf: Data(row.utf8))
+                }
+            }
+            try handle.synchronize()
+            try handle.close()
+            if fm.fileExists(atPath: url.path) {
+                _ = try fm.replaceItemAt(url, withItemAt: temporaryURL)
+            } else {
+                try fm.moveItem(at: temporaryURL, to: url)
+            }
+        } catch {
+            try? handle.close()
+            try? fm.removeItem(at: temporaryURL)
+            throw error
+        }
     }
 
     public static func smf(events: [MIDIEvent], bpm: Double = 120, ppqn: UInt16 = 480) -> Data {
