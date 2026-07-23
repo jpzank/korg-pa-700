@@ -39,7 +39,6 @@ def extract(pdf_path: Path) -> list[dict[str, object]]:
 
     with pdfplumber.open(pdf_path) as pdf:
         for pdf_page in range(965, 992):
-            printed_page = pdf_page - 12
             for table in pdf.pages[pdf_page - 1].extract_tables():
                 for raw_row in table[1:]:
                     if len(raw_row) != 4:
@@ -61,7 +60,6 @@ def extract(pdf_path: Path) -> list[dict[str, object]]:
                             "program": int(pc),
                             "library": library,
                             "category": category,
-                            "manualPage": printed_page,
                         }
                     )
 

@@ -18,6 +18,28 @@ public struct ArrangerStyle: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var address: String { "\(bankMSB).\(bankLSB).\(program)" }
+
+    public var libraryName: String { bankMSB == 2 ? "User" : "Factory" }
+
+    public var userBankName: String? {
+        guard bankMSB == 2 else { return nil }
+        return Self.userBankNames[bankLSB]
+    }
+
+    public static let userBankNames: [UInt8: String] = [
+        0: "User 1",
+        1: "User 2",
+        2: "User 3",
+        3: "User 4",
+        4: "User 5",
+        5: "User 6",
+        6: "PW",
+        7: "Halloween",
+        8: "Sertanejo K",
+        9: "4 Bloco",
+        10: "JPD",
+        11: "User 12"
+    ]
 }
 
 public struct ArrangerStyleCatalog: Codable, Equatable, Sendable {
@@ -45,18 +67,8 @@ public struct ArrangerStyleCatalog: Codable, Equatable, Sendable {
     }
 
     public static func bundledPA700() throws -> ArrangerStyleCatalog {
-        let packagedURL = Bundle.main.resourceURL?
-            .appendingPathComponent("ArrangerLab_ArrangerLabCore.bundle", isDirectory: true)
-            .appendingPathComponent("pa700-styles.json", isDirectory: false)
-        let url: URL
-        if let packagedURL, FileManager.default.isReadableFile(atPath: packagedURL.path) {
-            url = packagedURL
-        } else {
-            let moduleURL = Bundle.module.bundleURL.appendingPathComponent("pa700-styles.json", isDirectory: false)
-            guard FileManager.default.isReadableFile(atPath: moduleURL.path) else {
-                throw ArrangerLabError.invalidProfile("bundled PA700 Style catalog missing")
-            }
-            url = moduleURL
+        guard let url = Bundle.module.url(forResource: "pa700-styles", withExtension: "json") else {
+            throw ArrangerLabError.invalidProfile("bundled PA700 Style catalog missing")
         }
         let catalog = try JSONDecoder().decode(ArrangerStyleCatalog.self, from: Data(contentsOf: url))
         try catalog.validate()

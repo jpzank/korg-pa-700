@@ -16,7 +16,6 @@ enum LabTheme {
     static let annotationInk = Color(red: 0.105, green: 0.095, blue: 0.066)
 
     static let radius: CGFloat = 7
-    static let compact: CGFloat = 8
     static let control: CGFloat = 12
     static let standard: CGFloat = 16
     static let page: CGFloat = 24

@@ -36,6 +36,22 @@ private final class MIDIEventBatcher: @unchecked Sendable {
     }
 }
 
+@MainActor
+final class MIDIMonitorState: ObservableObject {
+    @Published private(set) var events: [MIDIEvent] = []
+    @Published private(set) var totalEventCount = 0
+
+    func update(events: [MIDIEvent], totalEventCount: Int) {
+        self.events = events
+        self.totalEventCount = totalEventCount
+    }
+
+    func clear() {
+        events.removeAll(keepingCapacity: true)
+        totalEventCount = 0
+    }
+}
+
 struct PerformanceIntentChange: Identifiable, Equatable {
     let label: String
     let previousValue: String
@@ -47,6 +63,13 @@ struct PerformanceIntentChange: Identifiable, Equatable {
 struct PerformanceIntentPreview: Equatable {
     let scene: PerformanceScene
     let changes: [PerformanceIntentChange]
+}
+
+enum PA700ConnectionHealth: Equatable {
+    case disconnected
+    case reconnecting
+    case confirmed
+    case unresponsive
 }
 
 @MainActor
@@ -85,8 +108,6 @@ final class AppModel: ObservableObject {
     @Published var destinations: [MIDIEndpoint] = []
     @Published var selectedSourceID: Int32?
     @Published var selectedDestinationID: Int32?
-    @Published private(set) var monitorEvents: [MIDIEvent] = []
-    @Published private(set) var totalEventCount = 0
     @Published var captureA: [MIDIEvent] = []
     @Published var captureB: [MIDIEvent] = []
     @Published var diff: [CaptureDiffItem] = []
@@ -180,18 +201,28 @@ final class AppModel: ObservableObject {
     @Published private(set) var performanceIntentStatus = "Nenhum MIDI será enviado antes da sua confirmação"
     @Published private(set) var showPresets: [ShowPreset] = []
     @Published private(set) var showSetLists: [ShowSetList] = []
+    @Published var showWorkspaceMode: ShowWorkspaceMode = .show
     @Published private(set) var activeShowSetListID: UUID?
     @Published private(set) var activeShowPresetID: UUID?
     @Published private(set) var activeShowSetListItemID: UUID?
+    @Published private(set) var showStartRequestID = UUID()
     @Published private(set) var pendingShowConfirmationID: UUID?
     @Published private(set) var lastShowAppliedAt: Date?
     @Published private(set) var showStatus = "Escolha uma música para começar"
+    @Published private(set) var pa700ConnectionHealth: PA700ConnectionHealth = .disconnected
+    @Published private(set) var pa700LiveState = PA700LiveState()
+    @Published private(set) var pa700CommandedShowState: PA700CommandedShowState?
+    @Published var liveDiscoveryTarget: PA700LiveDiscoveryTarget = .sound
+    @Published private(set) var liveDiscoverySamples: [PA700LiveDiscoverySample] = []
+    @Published private(set) var liveDiscoveryCapturing = false
 
     let profile: InstrumentProfile
     let driver: PA700Driver
+    let midiMonitor = MIDIMonitorState()
     private(set) var transport: MIDITransport?
     private let audioRecorder = AudioEvidenceRecorder()
     private let eventBatcher = MIDIEventBatcher()
+    private var liveStateReducer: PA700LiveStateReducer
     private var events: [MIDIEvent] = []
     private var monitorEventBuffer: [MIDIEvent] = []
     private var recordingStartIndex = 0
@@ -209,6 +240,9 @@ final class AppModel: ObservableObject {
     private var batchCollector: BatchSoundCollector?
     private var catalogValidationTask: Task<Void, Never>?
     private var pendingShowPersistenceTask: Task<Void, Never>?
+    private var connectionVerificationTask: Task<Void, Never>?
+    private var manualReconnectInProgress = false
+    private var liveDiscoveryStartIndex = 0
     private var catalogValidationEventStartIndex = 0
     private var catalogValidationEntries: [BatchSoundEntry] = []
     private var catalogValidationAudioEvidence: AudioEvidenceRecord?
@@ -227,10 +261,6 @@ final class AppModel: ObservableObject {
         guard let activeShowSetListID else { return nil }
         return showSetLists.first { $0.id == activeShowSetListID }
     }
-    var activeShowPreset: ShowPreset? {
-        guard let activeShowPresetID else { return nil }
-        return showPresets.first { $0.id == activeShowPresetID }
-    }
     var arrangerStyles: [ArrangerStyle] { driver.styleCatalog.styles }
     var styleSelectionOperational: Bool { profile.mappings["styleSelection"]?.status == .verified }
     var keyboardSetLibraryEntries: [KeyboardSetLibraryEntry] { driver.keyboardSetLibraryCatalog.keyboardSets }
@@ -245,7 +275,6 @@ final class AppModel: ObservableObject {
     var hasBatchMappingSession: Bool { batchCollector != nil }
     var latestBatchSound: BatchSoundEntry? { batchSoundEntries.last }
     var activeBatchScreen: BatchSoundScreenCapture? { batchScreenCaptures.last(where: \.isOpen) }
-    var isBatchScreenCapturing: Bool { activeBatchScreen != nil }
     var batchPendingNameCount: Int {
         batchSoundEntries.reduce(into: 0) { count, entry in
             if entry.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { count += 1 }
@@ -346,6 +375,8 @@ final class AppModel: ObservableObject {
     var presetABAPasses: Bool { !devicePresetVerificationChecks.isEmpty && devicePresetVerificationChecks.values.allSatisfy { $0 } }
     var arrangerTransportPasses: Bool { !arrangerTransportChecks.isEmpty && arrangerTransportChecks.values.allSatisfy { $0 } }
     var songBookPasses: Bool { !songBookVerificationChecks.isEmpty && songBookVerificationChecks.values.allSatisfy { $0 } }
+    var monitorEvents: [MIDIEvent] { midiMonitor.events }
+    var totalEventCount: Int { midiMonitor.totalEventCount }
     var visibleEvents: [MIDIEvent] {
         monitorEvents.filter { event in
             guard let message = event.message else { return true }
@@ -358,38 +389,24 @@ final class AppModel: ObservableObject {
     init() {
         profile = (try? .bundledPA700()) ?? Self.fallbackProfile()
         driver = PA700Driver(profile: profile)
+        liveStateReducer = PA700LiveStateReducer(
+            profile: profile,
+            sounds: (try? PA700OfficialSoundCatalog.bundled().sounds) ?? [],
+            styles: driver.styleCatalog.styles,
+            keyboardSets: driver.keyboardSetLibraryCatalog.keyboardSets
+        )
         do {
             let transport = try MIDITransport()
             self.transport = transport
             eventBatcher.onBatch = { [weak self] batch in
                 self?.receive(batch)
             }
-            transport.onEndpointsChanged = { [weak self] sources, destinations in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    self.sources = sources
-                    self.destinations = destinations
-                    if !self.connected { self.clearActiveShowSelection() }
-                    guard !self.connected,
-                          let source = sources.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 KEYBOARD") }),
-                          let destination = destinations.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 SOUND") }) else { return }
-                    do {
-                        try self.transport?.connect(sourceID: source.id, destinationID: destination.id)
-                        self.selectedSourceID = source.id
-                        self.selectedDestinationID = destination.id
-                        self.status = "PA700 reconectado automaticamente; verificando identidade"
-                        try self.transport?.send(.systemExclusive([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]))
-                    } catch { self.fail(error) }
-                }
-            }
-            transport.onEvent = { [weak eventBatcher] event in eventBatcher?.enqueue(event) }
-            transport.onFailure = { [weak self] error in DispatchQueue.main.async { self?.fail(error) } }
+            configureTransportCallbacks(transport)
             sources = transport.sources; destinations = transport.destinations
             if try transport.autoConnectPA700() {
                 selectedSourceID = transport.selectedSource?.id
                 selectedDestinationID = transport.selectedDestination?.id
-                status = "PA700 conectado; verificando identidade"
-                try transport.send(.systemExclusive([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]))
+                try beginConnectionVerification(status: "PA700 conectado; verificando identidade")
             } else { status = "Selecione os endpoints MIDI" }
         } catch { status = "CoreMIDI indisponível"; lastError = error.localizedDescription }
         restoreLatestVerification()
@@ -399,12 +416,119 @@ final class AppModel: ObservableObject {
         restoreShowPerformance()
     }
 
+    private func configureTransportCallbacks(_ transport: MIDITransport) {
+        transport.onEndpointsChanged = { [weak self, weak transport] sources, destinations in
+            DispatchQueue.main.async {
+                guard let self, let transport, self.transport === transport else { return }
+                self.sources = sources
+                self.destinations = destinations
+                if !self.connected {
+                    self.connectionVerificationTask?.cancel()
+                    if self.pa700ConnectionHealth != .unresponsive {
+                        self.pa700ConnectionHealth = .disconnected
+                    }
+                    self.invalidatePA700LiveState()
+                    self.clearActiveShowSelection()
+                }
+                guard !self.connected,
+                      let source = sources.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 KEYBOARD") }),
+                      let destination = destinations.first(where: { $0.name.localizedCaseInsensitiveContains("Pa700 SOUND") }) else { return }
+                do {
+                    try transport.connect(sourceID: source.id, destinationID: destination.id)
+                    self.selectedSourceID = source.id
+                    self.selectedDestinationID = destination.id
+                    try self.beginConnectionVerification(status: "PA700 reconectado automaticamente; verificando identidade")
+                } catch {
+                    self.pa700ConnectionHealth = .unresponsive
+                    self.fail(error)
+                }
+            }
+        }
+        transport.onEvent = { [weak eventBatcher] event in eventBatcher?.enqueue(event) }
+        transport.onFailure = { [weak self, weak transport] error in
+            DispatchQueue.main.async {
+                guard let self, let transport, self.transport === transport else { return }
+                self.connectionVerificationTask?.cancel()
+                self.invalidatePA700LiveState()
+                self.pa700ConnectionHealth = .unresponsive
+                self.fail(error)
+            }
+        }
+    }
+
+    private func beginConnectionVerification(status message: String) throws {
+        guard let transport, transport.selectedDestination != nil else {
+            throw ArrangerLabError.endpointUnavailable
+        }
+        connectionVerificationTask?.cancel()
+        invalidatePA700LiveState()
+        pa700ConnectionHealth = .reconnecting
+        identityResult = "Consulta enviada…"
+        status = message
+        try transport.send(.systemExclusive([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]))
+        connectionVerificationTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard let self, !Task.isCancelled, self.pa700ConnectionHealth == .reconnecting else { return }
+            self.pa700ConnectionHealth = .unresponsive
+            self.manualReconnectInProgress = false
+            self.status = "PA700 conectado ao USB, mas não respondeu à verificação"
+            self.showStatus = "PA700 sem resposta. Clique no indicador para reconectar."
+        }
+    }
+
+    func resetPA700Connection() {
+        guard pa700ConnectionHealth != .reconnecting else { return }
+        connectionVerificationTask?.cancel()
+        invalidatePA700LiveState()
+        manualReconnectInProgress = true
+        pa700ConnectionHealth = .reconnecting
+        status = "Recriando a conexão MIDI com o PA700…"
+        showStatus = "Reconectando ao PA700…"
+
+        if let previous = transport {
+            previous.onEndpointsChanged = nil
+            previous.onEvent = nil
+            previous.onFailure = nil
+            previous.close(sendPanic: false)
+        }
+        transport = nil
+        sources = []
+        destinations = []
+        selectedSourceID = nil
+        selectedDestinationID = nil
+        expert.expire()
+
+        do {
+            let replacement = try MIDITransport()
+            transport = replacement
+            configureTransportCallbacks(replacement)
+            sources = replacement.sources
+            destinations = replacement.destinations
+            guard try replacement.autoConnectPA700() else { throw ArrangerLabError.endpointUnavailable }
+            selectedSourceID = replacement.selectedSource?.id
+            selectedDestinationID = replacement.selectedDestination?.id
+            try beginConnectionVerification(status: "PA700 localizado; verificando resposta…")
+        } catch {
+            manualReconnectInProgress = false
+            pa700ConnectionHealth = .unresponsive
+            status = "Não foi possível reconectar ao PA700"
+            showStatus = "PA700 não respondeu. Verifique o USB e tente novamente."
+        }
+        objectWillChange.send()
+    }
+
     func connect() {
         do {
             try transport?.connect(sourceID: selectedSourceID, destinationID: selectedDestinationID)
             expert.expire()
-            status = connected ? "Conectado" : "Desconectado"
-            if !connected { clearActiveShowSelection() }
+            if connected {
+                try beginConnectionVerification(status: "Conectado; verificando identidade do PA700")
+            } else {
+                pa700ConnectionHealth = .disconnected
+                invalidatePA700LiveState()
+                status = "Desconectado"
+                clearActiveShowSelection()
+            }
             objectWillChange.send()
         } catch { fail(error) }
     }
@@ -413,7 +537,7 @@ final class AppModel: ObservableObject {
         do {
             if try transport?.autoConnectPA700() == true {
                 selectedSourceID = transport?.selectedSource?.id; selectedDestinationID = transport?.selectedDestination?.id
-                status = "Pa700 conectado automaticamente"
+                try beginConnectionVerification(status: "PA700 conectado automaticamente; verificando identidade")
             } else { throw ArrangerLabError.endpointUnavailable }
         } catch { fail(error) }
     }
@@ -422,19 +546,24 @@ final class AppModel: ObservableObject {
         auditionTask?.cancel()
         auditionTask = nil
         audioRecorder.stopSilently()
+        connectionVerificationTask?.cancel()
+        manualReconnectInProgress = false
         try? transport?.panic()
         try? transport?.connect(sourceID: nil, destinationID: nil)
         endBatchScreenCapture(silently: true)
         isBatchMapping = false
         saveBatchCatalogSilently()
         clearActiveShowSelection()
+        invalidatePA700LiveState()
+        pa700ConnectionHealth = .disconnected
         expert.expire(); status = "Desconectado"; objectWillChange.send()
     }
 
     func panic() {
+        clearActiveShowSelection()
+        invalidatePA700LiveState()
         do {
             try transport?.panic()
-            clearActiveShowSelection()
             status = "Panic enviado em 16 canais"
             showStatus = "Panic enviado. Selecione novamente a música antes de tocar."
         } catch { fail(error) }
@@ -886,10 +1015,40 @@ final class AppModel: ObservableObject {
         _ = eventBatcher.drain()
         events.removeAll(keepingCapacity: true)
         monitorEventBuffer.removeAll(keepingCapacity: true)
-        monitorEvents.removeAll(keepingCapacity: true)
-        totalEventCount = 0
+        midiMonitor.clear()
         resetCaptureCursors()
         diff.removeAll()
+    }
+
+    func startLiveDiscoverySample() {
+        flushPendingMIDIEvents()
+        liveDiscoveryStartIndex = events.count
+        liveDiscoveryCapturing = true
+        status = "Captura passiva: \(liveDiscoveryTarget.rawValue). Faça uma única alteração no PA700."
+    }
+
+    func finishLiveDiscoverySample() {
+        guard liveDiscoveryCapturing else { return }
+        flushPendingMIDIEvents()
+        let messages = PA700LiveDiscovery.canonicalInputMessages(from: Array(events.dropFirst(liveDiscoveryStartIndex)))
+        liveDiscoveryCapturing = false
+        guard !messages.isEmpty else {
+            status = "Nenhuma mensagem útil recebida. Confira MIDI Out e os filtros do PA700."
+            return
+        }
+        let repetition = liveDiscoverySamples.filter { $0.target == liveDiscoveryTarget }.count + 1
+        liveDiscoverySamples.append(.init(target: liveDiscoveryTarget, repetition: repetition, messages: messages))
+        if liveDiscoverySamples.count > 30 { liveDiscoverySamples.removeFirst(liveDiscoverySamples.count - 30) }
+        let deterministic = PA700LiveDiscovery.hasThreeMatchingSamples(liveDiscoverySamples, for: liveDiscoveryTarget)
+        status = deterministic
+            ? "\(liveDiscoveryTarget.rawValue): três capturas idênticas; mapping pronto para revisão física."
+            : "\(liveDiscoveryTarget.rawValue): repetição \(repetition) capturada. Faça a mesma alteração três vezes."
+    }
+
+    func clearLiveDiscoverySamples() {
+        liveDiscoveryCapturing = false
+        liveDiscoverySamples.removeAll()
+        status = "Capturas do identificador limpas"
     }
     func updateDiff(includeNotes: Bool = false, includeClock: Bool = false, includeSensing: Bool = false) {
         diff = CaptureDiffer.compare(captureA, captureB, options: .init(includeNotes: includeNotes, includeClock: includeClock, includeActiveSensing: includeSensing))
@@ -1153,6 +1312,7 @@ final class AppModel: ObservableObject {
 
     func terminate() {
         catalogValidationTask?.cancel()
+        connectionVerificationTask?.cancel()
         flushPendingShowPersistence()
         _ = eventBatcher.drain()
         isBatchMapping = false
@@ -1559,10 +1719,10 @@ final class AppModel: ObservableObject {
             if let existingIndex { updated[existingIndex] = preset } else { updated.append(preset) }
             try persistShowPresets(updated)
             showPresets = updated
-            showStatus = existing == nil ? "Preset de \(preset.songTitle) salvo" : "Preset de \(preset.songTitle) atualizado"
+            showStatus = existing == nil ? "Música \(preset.songTitle) salva" : "Música \(preset.songTitle) atualizada"
             return true
         } catch {
-            showStatus = "Não foi possível salvar o preset"
+            showStatus = "Não foi possível salvar a música"
             fail(error)
             return false
         }
@@ -1583,14 +1743,14 @@ final class AppModel: ObservableObject {
             showSetLists = updatedSetLists
             if activeShowPresetID == preset.id { clearActiveShowSelection() }
             if pendingShowConfirmationID == preset.id { pendingShowConfirmationID = nil }
-            showStatus = "Preset de \(preset.songTitle) excluído"
+            showStatus = "Música \(preset.songTitle) excluída"
         } catch { fail(error) }
     }
 
     @discardableResult
     func testShowPreset(_ preset: ShowPreset) -> Bool {
         guard connected else {
-            showStatus = "Conecte o PA700 para testar este preset"
+            showStatus = "Conecte o PA700 para testar esta música"
             return false
         }
         if preset.hasDirectSetup {
@@ -1612,7 +1772,7 @@ final class AppModel: ObservableObject {
         do {
             try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
             pendingShowConfirmationID = preset.id
-            showStatus = "SongBook \(songBookNumber) enviado. Confira o PA700 e confirme o preset."
+            showStatus = "SongBook \(songBookNumber) enviado. Confira o PA700 e confirme a música."
             return true
         } catch {
             showStatus = "Falha ao testar \(preset.songTitle)"
@@ -1624,14 +1784,14 @@ final class AppModel: ObservableObject {
     @discardableResult
     func confirmShowPreset(_ preset: ShowPreset) -> Bool {
         guard pendingShowConfirmationID == preset.id else {
-            showStatus = "Teste este preset no PA700 antes de confirmar"
+            showStatus = "Teste esta música no PA700 antes de confirmar"
             return false
         }
         var confirmed = preset
         confirmed.confirmedAt = Date()
         guard saveShowPreset(confirmed) else { return false }
         pendingShowConfirmationID = nil
-        showStatus = "Preset de \(confirmed.songTitle) confirmado no PA700"
+        showStatus = "Música \(confirmed.songTitle) confirmada no PA700"
         return true
     }
 
@@ -1643,23 +1803,43 @@ final class AppModel: ObservableObject {
         }
         guard connected else {
             clearActiveShowSelection()
+            invalidatePA700LiveState()
             showStatus = "PA700 desconectado. Reconecte antes de aplicar a música."
             return false
         }
+        guard pa700ConnectionHealth == .confirmed else {
+            showStatus = "Confirme a conexão pelo indicador antes de aplicar a música."
+            return false
+        }
         do {
+            let schedule: [ScheduledMIDIMessage]
             if preset.hasDirectSetup {
-                try transport?.sendScheduled(compileDirectShowSetup(preset))
+                schedule = try compileDirectShowSetup(preset)
             } else if let songBookNumber = preset.songBookNumber {
-                try transport?.sendScheduled(driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false))
+                schedule = try driver.compile(.selectSongBookEntry(number: songBookNumber), allowDraft: false)
             } else {
                 throw ArrangerLabError.invalidValue("show preset has no operational setup")
             }
+
+            // A new attempt can partially change the keyboard before CoreMIDI reports a
+            // failure. From this point on, neither a previous command nor an earlier
+            // observation can safely describe the current physical state.
+            markCommandedPA700StateStale()
+            markObservedPA700StateStale()
+            try transport?.sendScheduled(schedule)
+
             activeShowPresetID = preset.id
             activeShowSetListItemID = setListItemID
-            lastShowAppliedAt = Date()
+            let appliedAt = Date()
+            lastShowAppliedAt = appliedAt
+            pa700CommandedShowState = PA700CommandedShowState(
+                preset: preset,
+                setListItemID: setListItemID,
+                sentAt: appliedAt
+            )
             if preset.hasDirectSetup {
-                let sound = preset.parts.first(where: { $0.part == .upper1 })?.displayName ?? "Kbd \(preset.keyboardSetSlot ?? 0)"
-                showStatus = "\(preset.songTitle) pronta · JPD · \(sound) · Transpose \(preset.transposeSemitones)"
+                let styleName = preset.arrangerStyleID.flatMap { id in arrangerStyles.first { $0.id == id }?.displayName } ?? "Style"
+                showStatus = "\(preset.songTitle) pronta · \(styleName) · Keyboard Set \(preset.keyboardSetSlot ?? 1) · Transpose \(preset.transposeSemitones)"
             } else {
                 showStatus = "\(preset.songTitle) aplicada · SongBook \(preset.songBookNumber ?? 0)"
             }
@@ -1680,8 +1860,13 @@ final class AppModel: ObservableObject {
         let keyboardSet = try driver.compile(.selectKeyboardSet(slot: slot), allowDraft: false)
         let transpose = try driver.compile(.setMasterTranspose(semitones: preset.transposeSemitones), allowDraft: false)
         return shifted(style, by: 0)
-            + shifted(keyboardSet, by: 100_000_000)
-            + shifted(transpose, by: 150_000_000)
+            // The PA700 loads a User Style asynchronously. Commands sent during
+            // that load can be accepted and then overwritten by the completed Style.
+            + shifted(keyboardSet, by: 750_000_000)
+            + shifted(transpose, by: 1_500_000_000)
+            // Master transpose is idempotent. Reassert it after the Style and
+            // Keyboard Set have settled so the final physical state is reliable.
+            + shifted(transpose, by: 1_800_000_000)
     }
 
     private func shifted(_ messages: [ScheduledMIDIMessage], by offset: UInt64) -> [ScheduledMIDIMessage] {
@@ -1752,6 +1937,19 @@ final class AppModel: ObservableObject {
         showStatus = "Ordem de \(setList.name) atualizada"
     }
 
+    func moveShowSetListItems(in setList: ShowSetList, fromOffsets: IndexSet, toOffset: Int) {
+        guard let source = fromOffsets.first, fromOffsets.count == 1,
+              setList.items.indices.contains(source) else { return }
+        var destination = toOffset
+        if destination > source { destination -= 1 }
+        guard destination != source, destination >= 0, destination < setList.items.count else { return }
+        guard updateShowSetList(setList.id, update: { updated in
+            let item = updated.items.remove(at: source)
+            updated.items.insert(item, at: destination)
+        }) else { return }
+        showStatus = "Ordem de \(setList.name) atualizada"
+    }
+
     func deleteShowSetList(_ setList: ShowSetList) {
         do {
             let updated = showSetLists.filter { $0.id != setList.id }
@@ -1775,12 +1973,96 @@ final class AppModel: ObservableObject {
         clearActiveShowSelection()
     }
 
+    func startShowSetList(_ id: UUID) {
+        guard let setList = showSetLists.first(where: { $0.id == id }), !setList.items.isEmpty else {
+            showStatus = "Adicione pelo menos uma música antes de iniciar o show"
+            return
+        }
+        selectShowSetList(id)
+        showStartRequestID = UUID()
+        showStatus = "\(setList.name) iniciado na primeira música"
+    }
+
     func showPreset(for item: ShowSetListItem) -> ShowPreset? {
         showPresets.first { $0.id == item.presetID }
     }
 
     func openShowPresetForReading(_ preset: ShowPreset) {
         showStatus = "\(preset.songTitle) aberta para leitura · não enviada ao PA700"
+    }
+
+    @discardableResult
+    func adjustShowTranspose(presetID: UUID, by semitones: Int) -> Bool {
+        guard semitones == -1 || semitones == 1,
+              let preset = showPresets.first(where: { $0.id == presetID }) else {
+            showStatus = "Não foi possível alterar o transpose"
+            return false
+        }
+        let target = preset.transposeSemitones + semitones
+        guard (-12...12).contains(target) else {
+            showStatus = "O transpose permitido vai de -12 a +12"
+            return false
+        }
+
+        var updated = preset
+        updated.transposeSemitones = target
+        guard saveShowPreset(updated) else { return false }
+        let display = target == 0 ? "0" : "\(target > 0 ? "+" : "")\(target)"
+        showStatus = "Transpose de \(updated.songTitle): \(display) · cifra mantida"
+        return true
+    }
+
+    @discardableResult
+    func setShowChartKey(presetID: UUID, key: String) -> Bool {
+        guard let preset = showPresets.first(where: { $0.id == presetID }),
+              ShowMusicTheory.transposedKey(key, by: 0) != nil else {
+            showStatus = "Não foi possível corrigir o tom da cifra"
+            return false
+        }
+        guard preset.originalKey != key else { return true }
+
+        var updated = preset
+        updated.originalKey = key
+        guard saveShowPreset(updated) else { return false }
+        showStatus = "Tom nominal de \(updated.songTitle): \(key) · acordes mantidos"
+        return true
+    }
+
+    @discardableResult
+    func saveShowChartDraft(presetID: UUID, text: String) -> Bool {
+        guard let preset = showPresets.first(where: { $0.id == presetID }) else {
+            showStatus = "Não foi possível localizar a cifra"
+            return false
+        }
+
+        var updated = preset
+        updated.chartLines = ShowChartLine.removingImportArtifacts(
+            from: ShowChartLine.parseEditorText(text)
+        )
+        guard saveShowPreset(updated) else { return false }
+        showStatus = "Rascunho da cifra de \(updated.songTitle) salvo localmente"
+        return true
+    }
+
+    @discardableResult
+    func transposeShowChart(presetID: UUID, by semitones: Int) -> Bool {
+        guard semitones == -1 || semitones == 1,
+              let preset = showPresets.first(where: { $0.id == presetID }),
+              let targetKey = ShowMusicTheory.transposedKey(preset.originalKey, by: semitones) else {
+            showStatus = "Não foi possível alterar o tom da cifra"
+            return false
+        }
+
+        var updated = preset
+        updated.chartLines = ShowMusicTheory.transposeChart(
+            preset.chartLines,
+            by: semitones,
+            preferFlats: targetKey.contains("b")
+        )
+        updated.originalKey = targetKey
+        guard saveShowPreset(updated) else { return false }
+        showStatus = "Cifra de \(updated.songTitle) em \(targetKey)"
+        return true
     }
 
     func updateShowAnnotations(presetID: UUID, annotations: [ShowChartAnnotation]) {
@@ -2734,14 +3016,18 @@ final class AppModel: ObservableObject {
         if monitorEventBuffer.count > 5_000 {
             monitorEventBuffer.removeFirst(monitorEventBuffer.count - 5_000)
         }
-        monitorEvents = monitorEventBuffer
-        totalEventCount = events.count
+        midiMonitor.update(events: monitorEventBuffer, totalEventCount: events.count)
 
+        var liveStateChanged = false
         for event in batch {
+            if liveStateReducer.consume(event) { liveStateChanged = true }
             if isBatchMapping { consumeBatchMappingEvent(event) }
             guard let message = event.message else { continue }
-            let identification = driver.identify(from: message)
-            if identification.confidence == 1 {
+            if driver.identifies(message) {
+                let completedManualReconnect = manualReconnectInProgress
+                connectionVerificationTask?.cancel()
+                manualReconnectInProgress = false
+                if connected { pa700ConnectionHealth = .confirmed }
                 identityResult = "PA700 confirmado • fabricante 42 • família 0060 • modelo 005D • firmware 1.5.0"
                 let verified = [
                     persistedPartVolumeVerified ? "partVolume" : nil,
@@ -2753,8 +3039,31 @@ final class AppModel: ObservableObject {
                     midiClockOperational ? "midiClock" : nil,
                     songBookVerified ? "songBook" : nil
                 ].compactMap { $0 }
-                status = verified.isEmpty ? "PA700 identificado" : "PA700 identificado • \(verified.joined(separator: " + ")) Verified"
+                if completedManualReconnect {
+                    status = "PA700 reconectado e confirmado"
+                    showStatus = "PA700 reconectado. Aplique novamente a música."
+                } else {
+                    status = verified.isEmpty ? "PA700 identificado" : "PA700 identificado • \(verified.joined(separator: " + ")) Verified"
+                }
             }
+        }
+        if liveStateChanged { pa700LiveState = liveStateReducer.state }
+    }
+
+    private func invalidatePA700LiveState() {
+        markObservedPA700StateStale()
+        markCommandedPA700StateStale()
+    }
+
+    private func markObservedPA700StateStale() {
+        liveStateReducer.markStale()
+        pa700LiveState = liveStateReducer.state
+    }
+
+    private func markCommandedPA700StateStale() {
+        if var commanded = pa700CommandedShowState {
+            commanded.markStale()
+            pa700CommandedShowState = commanded
         }
     }
 

@@ -85,18 +85,8 @@ public struct InstrumentProfile: Codable, Equatable, Sendable {
     }
 
     public static func bundledPA700() throws -> InstrumentProfile {
-        let packagedURL = Bundle.main.resourceURL?
-            .appendingPathComponent("ArrangerLab_ArrangerLabCore.bundle", isDirectory: true)
-            .appendingPathComponent("pa700.json", isDirectory: false)
-        let url: URL
-        if let packagedURL, FileManager.default.isReadableFile(atPath: packagedURL.path) {
-            url = packagedURL
-        } else {
-            let moduleURL = Bundle.module.bundleURL.appendingPathComponent("pa700.json", isDirectory: false)
-            guard FileManager.default.isReadableFile(atPath: moduleURL.path) else {
-                throw ArrangerLabError.invalidProfile("bundled PA700 profile missing")
-            }
-            url = moduleURL
+        guard let url = Bundle.module.url(forResource: "pa700", withExtension: "json") else {
+            throw ArrangerLabError.invalidProfile("bundled PA700 profile missing")
         }
         let profile = try JSONDecoder().decode(InstrumentProfile.self, from: Data(contentsOf: url))
         try profile.validate()

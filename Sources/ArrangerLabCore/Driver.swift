@@ -1,25 +1,9 @@
 import Foundation
 
-public struct DriverIdentification: Equatable, Sendable {
-    public let model: String?
-    public let confidence: Double
-    public let reason: String
-    public init(model: String?, confidence: Double, reason: String) { self.model = model; self.confidence = confidence; self.reason = reason }
-}
-
-public protocol InstrumentDriver {
-    var profile: InstrumentProfile { get }
-    var capabilities: Set<String> { get }
-    func identify(from message: MIDIMessage) -> DriverIdentification
-    func compile(_ action: InstrumentAction, allowDraft: Bool) throws -> [ScheduledMIDIMessage]
-    func interpret(_ message: MIDIMessage) -> [InstrumentAction]
-}
-
-public struct PA700Driver: InstrumentDriver {
+public struct PA700Driver {
     public let profile: InstrumentProfile
     public let styleCatalog: ArrangerStyleCatalog
     public let keyboardSetLibraryCatalog: KeyboardSetLibraryCatalog
-    public let capabilities: Set<String> = ["identity", "partVolume", "partExpression", "partPan", "partDamper", "devicePreset", "styleSelection", "keyboardSetLibrarySelection", "masterTranspose", "arrangerTransport", "midiClock", "songBook", "arrangerElement", "keyboardSet", "arrangerControl"]
 
     public init(profile: InstrumentProfile, styleCatalog: ArrangerStyleCatalog? = nil, keyboardSetLibraryCatalog: KeyboardSetLibraryCatalog? = nil) {
         self.profile = profile
@@ -27,12 +11,9 @@ public struct PA700Driver: InstrumentDriver {
         self.keyboardSetLibraryCatalog = keyboardSetLibraryCatalog ?? (try? .bundledPA700()) ?? .init(schemaVersion: 1, model: "PA700", firmware: "1.5.0", source: "unavailable", keyboardSets: [])
     }
 
-    public func identify(from message: MIDIMessage) -> DriverIdentification {
-        guard case let .systemExclusive(bytes) = message else { return .init(model: nil, confidence: 0, reason: "not SysEx") }
-        for signature in profile.identitySignatures where bytes.starts(with: signature.responsePrefix) {
-            return .init(model: profile.model, confidence: 1, reason: "Universal Identity Reply matched manufacturer/family/model")
-        }
-        return .init(model: nil, confidence: 0, reason: "identity signature did not match")
+    public func identifies(_ message: MIDIMessage) -> Bool {
+        guard case let .systemExclusive(bytes) = message else { return false }
+        return profile.identitySignatures.contains { bytes.starts(with: $0.responsePrefix) }
     }
 
     public func compile(_ action: InstrumentAction, allowDraft: Bool = false) throws -> [ScheduledMIDIMessage] {

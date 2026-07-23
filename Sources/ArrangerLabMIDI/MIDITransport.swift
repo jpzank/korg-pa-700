@@ -149,10 +149,15 @@ public final class MIDITransport: @unchecked Sendable {
         try? send(.realtime(0xFC))
     }
 
-    public func close() {
+    public func close(sendPanic: Bool = true) {
         guard !isClosed else { return }
         isClosed = true
-        stopClock()
+        if sendPanic {
+            stopClock()
+        } else {
+            clockTimer?.cancel()
+            clockTimer = nil
+        }
         if let source = selectedSource { MIDIPortDisconnectSource(inputPort, source.ref) }
         if inputPort != 0 { MIDIPortDispose(inputPort) }
         if outputPort != 0 { MIDIPortDispose(outputPort) }

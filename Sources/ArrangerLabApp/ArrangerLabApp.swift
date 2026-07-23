@@ -1,4 +1,5 @@
 import ArrangerLabCore
+import AppKit
 import SwiftUI
 
 @main
@@ -12,17 +13,13 @@ struct ArrangerLabApp: App {
                 .environmentObject(model)
                 .frame(minWidth: 920, minHeight: 640)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.terminate() }
+                .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in
+                    model.resetPA700Connection()
+                }
         }
             .defaultSize(width: 1_220, height: 780)
             .commands { ArrangerLabCommands(model: model) }
             .onChange(of: scenePhase) { _, phase in if phase == .background { model.panic() } }
-
-        Window("Preparar show", id: "prepare-show") {
-            ShowPreparationView()
-                .environmentObject(model)
-                .frame(minWidth: 980, minHeight: 700)
-        }
-            .defaultSize(width: 1_180, height: 820)
 
         Window("Laboratório", id: "laboratory") {
             LaboratoryRootView()
@@ -39,9 +36,15 @@ private struct ArrangerLabCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Arranger Lab") {
-            Button("Abrir Show") { openWindow(id: "show") }
+            Button("Show") {
+                model.showWorkspaceMode = .show
+                openWindow(id: "show")
+            }
                 .keyboardShortcut("1", modifiers: [.command])
-            Button("Preparar show") { openWindow(id: "prepare-show") }
+            Button("Repertório") {
+                model.showWorkspaceMode = .repertoire
+                openWindow(id: "show")
+            }
                 .keyboardShortcut("2", modifiers: [.command])
             Button("Abrir Laboratório") { openWindow(id: "laboratory") }
                 .keyboardShortcut("3", modifiers: [.command])
@@ -139,10 +142,20 @@ struct ConnectionView: View {
 
 struct MonitorView: View {
     @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        MonitorContent(model: model, monitor: model.midiMonitor)
+    }
+}
+
+private struct MonitorContent: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var monitor: MIDIMonitorState
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PageHeader(title: "Monitor", subtitle: "Filtros escondem ruído visual sem alterar os bytes capturados.")
-            HStack { Toggle("Ocultar Clock", isOn: $model.filterClock); Toggle("Ocultar Active Sensing", isOn: $model.filterActiveSensing); Spacer(); Text("\(model.totalEventCount) crus · \(model.visibleEvents.count) visíveis no buffer").foregroundStyle(.secondary); Button("Limpar") { model.clearEvents() } }
+            HStack { Toggle("Ocultar Clock", isOn: $model.filterClock); Toggle("Ocultar Active Sensing", isOn: $model.filterActiveSensing); Spacer(); Text("\(monitor.totalEventCount) crus · \(model.visibleEvents.count) visíveis no buffer").foregroundStyle(.secondary); Button("Limpar") { model.clearEvents() } }
             Table(model.visibleEvents.suffix(2_000).reversed()) {
                 TableColumn("Tempo +s") { event in Text(model.elapsedString(for: event)).font(.system(.caption, design: .monospaced)) }.width(90)
                 TableColumn("Direção") { event in Label(event.direction == .input ? "IN" : "OUT", systemImage: event.direction == .input ? "arrow.down.left" : "arrow.up.right").foregroundStyle(event.direction == .input ? LabTheme.inbound : LabTheme.draft) }.width(75)
@@ -194,6 +207,63 @@ struct RecorderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             PageHeader(title: "Captura e comparação", subtitle: "A reprodução usa somente eventos de saída e sempre termina com Panic.")
+            GroupBox("Identificar painel do PA700") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        Picker("Observar", selection: $model.liveDiscoveryTarget) {
+                            ForEach(PA700LiveDiscoveryTarget.allCases) { target in
+                                Text(target.rawValue).tag(target)
+                            }
+                        }
+                        .frame(width: 230)
+                        .disabled(model.liveDiscoveryCapturing)
+
+                        Button(
+                            model.liveDiscoveryCapturing ? "Concluir repetição" : "Iniciar repetição",
+                            systemImage: model.liveDiscoveryCapturing ? "stop.fill" : "record.circle"
+                        ) {
+                            if model.liveDiscoveryCapturing {
+                                model.finishLiveDiscoverySample()
+                            } else {
+                                model.startLiveDiscoverySample()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(model.liveDiscoveryCapturing ? LabTheme.danger : LabTheme.signal)
+                        .disabled(!model.connected)
+
+                        let targetSamples = model.liveDiscoverySamples.filter { $0.target == model.liveDiscoveryTarget }
+                        Text("\(min(targetSamples.count, 3)) de 3")
+                            .font(.callout.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(
+                                PA700LiveDiscovery.hasThreeMatchingSamples(model.liveDiscoverySamples, for: model.liveDiscoveryTarget)
+                                    ? LabTheme.verified
+                                    : Color.secondary
+                            )
+                        Spacer()
+                        Button("Limpar", action: model.clearLiveDiscoverySamples)
+                            .disabled(model.liveDiscoverySamples.isEmpty || model.liveDiscoveryCapturing)
+                    }
+                    Text("\(model.liveDiscoveryTarget.instruction) Volte ao estado inicial antes de cada repetição.")
+                        .foregroundStyle(.secondary)
+                    ForEach(model.liveDiscoverySamples.filter { $0.target == model.liveDiscoveryTarget }.suffix(3)) { sample in
+                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                            Text("R\(sample.repetition)")
+                                .font(.caption.monospacedDigit().weight(.semibold))
+                                .frame(width: 28, alignment: .leading)
+                            Text(sample.signature)
+                                .font(.caption.monospaced())
+                                .lineLimit(1)
+                                .textSelection(.enabled)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    Text("Somente MIDI de entrada. Clock e Active Sensing são ignorados; nenhum comando é enviado ao teclado.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(8)
+            }
             HStack { Button(model.isRecording ? "Parar" : "Gravar", systemImage: model.isRecording ? "stop.fill" : "record.circle") { model.toggleRecording() }.buttonStyle(.borderedProminent).tint(model.isRecording ? LabTheme.danger : LabTheme.signal); Button("Guardar A") { model.markCaptureA() }; Button("Guardar B") { model.markCaptureB() }; Divider().frame(height: 20); Text("Reprodução"); Slider(value: $model.replaySpeed, in: 0.25...2, step: 0.25).frame(width: 130); Text("\(model.replaySpeed, specifier: "%.2f")×").monospacedDigit(); Button("Reproduzir") { model.replayCurrent() }.disabled(!model.connected); Spacer(); Button("Salvar .arrlab") { model.saveExperiment() } }
             HStack { Toggle("Notas", isOn: $includeNotes); Toggle("Clock", isOn: $includeClock); Toggle("Active Sensing", isOn: $includeSensing); Button("Atualizar Diff") { model.updateDiff(includeNotes: includeNotes, includeClock: includeClock, includeSensing: includeSensing) }; Spacer(); Text("A \(model.captureA.count) · B \(model.captureB.count)").foregroundStyle(.secondary) }
             Table(model.diff) {

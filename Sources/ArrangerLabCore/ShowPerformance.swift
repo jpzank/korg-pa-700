@@ -92,6 +92,12 @@ public struct ShowChartLine: Codable, Equatable, Identifiable, Sendable {
         }
     }
 
+    /// Compares editable chart content while ignoring generated line IDs.
+    /// Parsing editor text creates fresh IDs every time.
+    public static func hasSameEditorContent(_ lhs: [ShowChartLine], _ rhs: [ShowChartLine]) -> Bool {
+        editorText(from: lhs) == editorText(from: rhs)
+    }
+
     /// Removes page-fragment labels introduced by PDF and web extraction,
     /// while keeping IDs and every musical line intact. Adjacent empty lines
     /// are compacted so removed labels do not leave visual gaps on stage.

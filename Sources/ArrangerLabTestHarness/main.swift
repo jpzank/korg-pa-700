@@ -58,6 +58,10 @@ func run() throws {
         throw HarnessFailure(description: "verified User Style JPD missing")
     }
     try check(jpdStyle.address == "2.10.0", "User Style JPD preserves the documented and physically verified address 2.10.0")
+    try check(jpdStyle.libraryName == "User" && jpdStyle.userBankName == "JPD", "User Style JPD resolves through User bank JPD")
+    try check(ArrangerStyle.userBankNames.count == 12
+        && ArrangerStyle.userBankNames[6] == "PW"
+        && ArrangerStyle.userBankNames[11] == "User 12", "PA700 User Style hierarchy preserves all 12 photographed bank labels")
     let jpdSelection = try driver.compile(.selectArrangerStyle(styleID: jpdStyle.id), allowDraft: false)
     try check(jpdSelection.map(\.message) == [
         .controlChange(channel: 15, controller: 0, value: 2),
@@ -244,6 +248,17 @@ func run() throws {
     let parsedChart = ShowChartLine.parseEditorText(chartSource)
     try check(parsedChart.map(\.kind) == [.section, .chords, .lyrics, .space], "show chart editor parses section, chords, lyrics and space")
     try check(ShowChartLine.editorText(from: parsedChart) == chartSource, "show chart editor text round trip")
+    let reparsedChart = ShowChartLine.parseEditorText(chartSource)
+    try check(
+        ShowChartLine.hasSameEditorContent(parsedChart, reparsedChart),
+        "show chart dirty comparison ignores regenerated line IDs"
+    )
+    var changedChart = reparsedChart
+    changedChart[1].text = "G D Em"
+    try check(
+        !ShowChartLine.hasSameEditorContent(parsedChart, changedChart),
+        "show chart dirty comparison detects edited content"
+    )
     let chartWithImportArtifacts: [ShowChartLine] = [
         .init(kind: .space, text: ""),
         .init(kind: .section, text: "[Dedilhado]"),
@@ -656,7 +671,7 @@ func run() throws {
     let songBook = try driver.compile(.selectSongBookEntry(number: 4273), allowDraft: true)
     try check(songBook.map(\.message) == [.controlChange(channel: 15, controller: 99, value: 2), .controlChange(channel: 15, controller: 98, value: 64), .controlChange(channel: 15, controller: 6, value: 42), .controlChange(channel: 15, controller: 38, value: 73)], "SongBook NRPN encoding")
     let identity = MIDIMessage.systemExclusive([0xF0, 0x7E, 0x7F, 0x06, 0x02, 0x42, 0x60, 0x00, 0x5D, 0x00, 1, 5, 0, 0, 0xF7])
-    try check(driver.identify(from: identity).confidence == 1, "PA700 universal identity match")
+    try check(driver.identifies(identity), "PA700 universal identity match")
 
     let selectedPreset = MIDIProgramSelectionExtractor.lastComplete(in: [
         inputEvent(.controlChange(channel: 0, controller: 0, value: 121)),
@@ -964,6 +979,21 @@ func run() throws {
     transport.refreshEndpoints()
     try check(transport.selectedDestination == nil, "removed endpoint expires connection")
     transport.close()
+
+    var silentDestination = MIDIEndpointRef()
+    try check(MIDIDestinationCreateWithBlock(client, "Arranger Lab Silent Reset Destination" as CFString, &silentDestination) { _, _ in } == noErr, "silent reset virtual destination")
+    defer { MIDIEndpointDispose(silentDestination) }
+    var silentDestinationID: Int32 = 0
+    try check(MIDIObjectGetIntegerProperty(silentDestination, kMIDIPropertyUniqueID, &silentDestinationID) == noErr, "silent reset destination Unique ID")
+    let silentResetTransport = try MIDITransport()
+    silentResetTransport.refreshEndpoints()
+    try silentResetTransport.connect(sourceID: nil, destinationID: silentDestinationID)
+    var silentResetOutputCount = 0
+    silentResetTransport.onEvent = { event in
+        if event.direction == .output { silentResetOutputCount += 1 }
+    }
+    silentResetTransport.close(sendPanic: false)
+    try check(silentResetOutputCount == 0, "silent transport reset emits no Panic or Stop")
 }
 
 func reanalyzePresetPackage(at url: URL) throws {

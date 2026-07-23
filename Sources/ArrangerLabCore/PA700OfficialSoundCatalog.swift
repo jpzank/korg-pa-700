@@ -7,7 +7,6 @@ public struct PA700OfficialSound: Codable, Equatable, Sendable {
     public let program: UInt8
     public let library: String
     public let category: String
-    public let manualPage: Int
 
     public var selection: MIDIProgramSelection {
         MIDIProgramSelection(channel: 0, bankMSB: bankMSB, bankLSB: bankLSB, program: program)

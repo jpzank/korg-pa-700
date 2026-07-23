@@ -44,18 +44,8 @@ public struct KeyboardSetLibraryCatalog: Codable, Equatable, Sendable {
     }
 
     public static func bundledPA700() throws -> KeyboardSetLibraryCatalog {
-        let packagedURL = Bundle.main.resourceURL?
-            .appendingPathComponent("ArrangerLab_ArrangerLabCore.bundle", isDirectory: true)
-            .appendingPathComponent("pa700-keyboard-sets.json", isDirectory: false)
-        let url: URL
-        if let packagedURL, FileManager.default.isReadableFile(atPath: packagedURL.path) {
-            url = packagedURL
-        } else {
-            let moduleURL = Bundle.module.bundleURL.appendingPathComponent("pa700-keyboard-sets.json", isDirectory: false)
-            guard FileManager.default.isReadableFile(atPath: moduleURL.path) else {
-                throw ArrangerLabError.invalidProfile("bundled PA700 Keyboard Set Library catalog missing")
-            }
-            url = moduleURL
+        guard let url = Bundle.module.url(forResource: "pa700-keyboard-sets", withExtension: "json") else {
+            throw ArrangerLabError.invalidProfile("bundled PA700 Keyboard Set Library catalog missing")
         }
         let catalog = try JSONDecoder().decode(KeyboardSetLibraryCatalog.self, from: Data(contentsOf: url))
         try catalog.validate()
