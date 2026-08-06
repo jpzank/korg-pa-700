@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible problem without private or copyrighted data
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities here; follow SECURITY.md. Remove lyrics,
+        private captures, serial numbers and other sensitive material.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. Open …\n2. Select …\n3. Observe …"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Arranger Lab version or commit
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: macOS and Swift versions
+      placeholder: macOS 14.6, Swift 5.10
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware and firmware
+      description: Write "none" if the issue reproduces without hardware.
+      placeholder: KORG PA700, firmware 1.5.0
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized_evidence
+    attributes:
+      label: Sanitized logs or evidence
+      description: Paste only the smallest non-sensitive excerpt needed.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, personal data, copyrighted repertoire and device serials.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

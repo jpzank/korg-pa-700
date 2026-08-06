@@ -1,0 +1,2392 @@
+{
+  "schemaVersion": 1,
+  "model": "PA700",
+  "firmware": "1.5.0",
+  "source": "Korg PA700 User Manual v1.5, Musical Resources pages 948-952",
+  "keyboardSets": [
+    {
+      "id": "factory-keyboard-set-16-0-0",
+      "displayName": "Concert Grand",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-0-1",
+      "displayName": "Classic Grand",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-0-2",
+      "displayName": "Grand Piano Live",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-0-3",
+      "displayName": "Piano & Strings",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-0-4",
+      "displayName": "Honky-Tonk",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-0-5",
+      "displayName": "Jazz Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-0-6",
+      "displayName": "Korg M1 Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-0-7",
+      "displayName": "Piano & VPM",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-0-8",
+      "displayName": "Electric Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-0-9",
+      "displayName": "Phaser E. Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-0-10",
+      "displayName": "Ballad E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-0-11",
+      "displayName": "Tremolo E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-0-12",
+      "displayName": "Amp. Wurly",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-0-13",
+      "displayName": "Vintage Wurly",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-0-14",
+      "displayName": "Clean Wurly 1",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-0-15",
+      "displayName": "Clean Wurly 2",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-0-16",
+      "displayName": "Harpsichord",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-0-17",
+      "displayName": "Clav",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-0-18",
+      "displayName": "Rock Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-0-19",
+      "displayName": "Electric Grand",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-0-20",
+      "displayName": "R&B E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-0-21",
+      "displayName": "Dyno E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-0-22",
+      "displayName": "Distorsion E.P.",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-0-23",
+      "displayName": "Classic E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-0-24",
+      "displayName": "Digital Grand",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-0-25",
+      "displayName": "Piano Atmosphere",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-0-26",
+      "displayName": "Grand & Pad",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-0-27",
+      "displayName": "Harpsi & Orch.",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-0-28",
+      "displayName": "Natural Wurly",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-0-29",
+      "displayName": "Amp&Comp.Wurly",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-0-30",
+      "displayName": "FM E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 30
+    },
+    {
+      "id": "factory-keyboard-set-16-0-31",
+      "displayName": "Bell Tine E.P.",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 31
+    },
+    {
+      "id": "factory-keyboard-set-16-0-32",
+      "displayName": "Concert Hall",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 32
+    },
+    {
+      "id": "factory-keyboard-set-16-0-33",
+      "displayName": "Octave Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 33
+    },
+    {
+      "id": "factory-keyboard-set-16-0-34",
+      "displayName": "Piano & Scat",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 34
+    },
+    {
+      "id": "factory-keyboard-set-16-0-35",
+      "displayName": "Glide Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 35
+    },
+    {
+      "id": "factory-keyboard-set-16-0-36",
+      "displayName": "E.Piano & Pad",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 36
+    },
+    {
+      "id": "factory-keyboard-set-16-0-37",
+      "displayName": "E.Piano&SynVoice",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 37
+    },
+    {
+      "id": "factory-keyboard-set-16-0-38",
+      "displayName": "Digital E.P. Bld",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 38
+    },
+    {
+      "id": "factory-keyboard-set-16-0-39",
+      "displayName": "Stage E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 39
+    },
+    {
+      "id": "factory-keyboard-set-16-0-40",
+      "displayName": "Hybrid E.Piano 1",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 40
+    },
+    {
+      "id": "factory-keyboard-set-16-0-41",
+      "displayName": "Digital E.Piano",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 41
+    },
+    {
+      "id": "factory-keyboard-set-16-0-42",
+      "displayName": "Jazz Club E.P.",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 42
+    },
+    {
+      "id": "factory-keyboard-set-16-0-43",
+      "displayName": "Vibraphone",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 43
+    },
+    {
+      "id": "factory-keyboard-set-16-0-44",
+      "displayName": "Marimba Trill",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 44
+    },
+    {
+      "id": "factory-keyboard-set-16-0-45",
+      "displayName": "Xylophone",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 45
+    },
+    {
+      "id": "factory-keyboard-set-16-0-46",
+      "displayName": "Piano & Whistle",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 46
+    },
+    {
+      "id": "factory-keyboard-set-16-0-47",
+      "displayName": "Piano & Vibes",
+      "category": "Piano & EP",
+      "bankMSB": 16,
+      "bankLSB": 0,
+      "program": 47
+    },
+    {
+      "id": "factory-keyboard-set-16-1-0",
+      "displayName": "Jimmy Organ",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-1-1",
+      "displayName": "Gospel Organ",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-1-2",
+      "displayName": "Rock Organ",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-1-3",
+      "displayName": "Full Organ V.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-1-4",
+      "displayName": "DWB Org. Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-1-5",
+      "displayName": "DWB Dark Org.Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-1-6",
+      "displayName": "DWB Jazz Org. Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-1-7",
+      "displayName": "DWB Clas.Perc.Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-1-8",
+      "displayName": "BX3 Hi Perc.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-1-9",
+      "displayName": "BX3 Jazz Org. V.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-1-10",
+      "displayName": "BX3 4 Layers V.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-1-11",
+      "displayName": "Hot BX3 Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-1-12",
+      "displayName": "Full DWB 1 Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-1-13",
+      "displayName": "Full DWB 2 Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-1-14",
+      "displayName": "DWB Perc.Org. 1",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-1-15",
+      "displayName": "DWB Perc.Org. 2",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-1-16",
+      "displayName": "Distortion Organ",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-1-17",
+      "displayName": "Click Organ Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-1-18",
+      "displayName": "Jazz Organ Y+",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-1-19",
+      "displayName": "Dark Organ V.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-1-20",
+      "displayName": "Pipe Flute",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-1-21",
+      "displayName": "Full Pipes",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-1-22",
+      "displayName": "Theatre Organ 1",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-1-23",
+      "displayName": "Theatre Organ 2",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-1-24",
+      "displayName": "Harmonica 1",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-1-25",
+      "displayName": "Harmonica 2",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-1-26",
+      "displayName": "Harmonica 3",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-1-27",
+      "displayName": "Blues Harmonica",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-1-28",
+      "displayName": "Toots Harmonica",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-1-29",
+      "displayName": "Melodica",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-1-30",
+      "displayName": "Cassotto",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 30
+    },
+    {
+      "id": "factory-keyboard-set-16-1-31",
+      "displayName": "PiccoloAccordion",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 31
+    },
+    {
+      "id": "factory-keyboard-set-16-1-32",
+      "displayName": "Musette",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 32
+    },
+    {
+      "id": "factory-keyboard-set-16-1-33",
+      "displayName": "Master Fisa",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 33
+    },
+    {
+      "id": "factory-keyboard-set-16-1-34",
+      "displayName": "ItalianAccordion",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 34
+    },
+    {
+      "id": "factory-keyboard-set-16-1-35",
+      "displayName": "Clarinet Accord.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 35
+    },
+    {
+      "id": "factory-keyboard-set-16-1-36",
+      "displayName": "Alps Accordion",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 36
+    },
+    {
+      "id": "factory-keyboard-set-16-1-37",
+      "displayName": "Astor Bandoneon",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 37
+    },
+    {
+      "id": "factory-keyboard-set-16-1-38",
+      "displayName": "That’s Amore Acc",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 38
+    },
+    {
+      "id": "factory-keyboard-set-16-1-39",
+      "displayName": "Acc. & Bass Acc.",
+      "category": "Organ",
+      "bankMSB": 16,
+      "bankLSB": 1,
+      "program": 39
+    },
+    {
+      "id": "factory-keyboard-set-16-2-0",
+      "displayName": "Real Nylon Gtr",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-2-1",
+      "displayName": "Steel Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-2-2",
+      "displayName": "Clean Ch.Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-2-3",
+      "displayName": "Nylon Gtr & Pad",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-2-4",
+      "displayName": "Jazz Guitar 1",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-2-5",
+      "displayName": "Carlos Guitar1",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-2-6",
+      "displayName": "Overdrive Gtr1",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-2-7",
+      "displayName": "Western Gtr&Whis",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-2-8",
+      "displayName": "Shadow Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-2-9",
+      "displayName": "Clean El.Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-2-10",
+      "displayName": "Overdrive Gtr2",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-2-11",
+      "displayName": "Carlos Guitar2",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-2-12",
+      "displayName": "Distortion Gtr",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-2-13",
+      "displayName": "My Overdrive Gtr",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-2-14",
+      "displayName": "Nylon Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-2-15",
+      "displayName": "Gtrs Atmosphere",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-2-16",
+      "displayName": "Folk Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-2-17",
+      "displayName": "Jazz Guitar 2",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-2-18",
+      "displayName": "Crunch Gtr DNC",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-2-19",
+      "displayName": "Overdrive Gtr3",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-2-20",
+      "displayName": "AmbienceE.Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-2-21",
+      "displayName": "Carlos Guitar3",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-2-22",
+      "displayName": "George Gtr&Scat",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-2-23",
+      "displayName": "Guitar & Whistle",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-2-24",
+      "displayName": "Nylon Gtr & Fret",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-2-25",
+      "displayName": "Overdrive Gtr V.",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-2-26",
+      "displayName": "Rock & Roll Gtr",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-2-27",
+      "displayName": "Wah Guitar Y+",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-2-28",
+      "displayName": "12 Str Folk Gtr",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-2-29",
+      "displayName": "Jazz Club Guitar",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-2-30",
+      "displayName": "Unplugged Gtrs",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 30
+    },
+    {
+      "id": "factory-keyboard-set-16-2-31",
+      "displayName": "Guitar Club",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 31
+    },
+    {
+      "id": "factory-keyboard-set-16-2-32",
+      "displayName": "Flute&Gtr Synth",
+      "category": "Guitar",
+      "bankMSB": 16,
+      "bankLSB": 2,
+      "program": 32
+    },
+    {
+      "id": "factory-keyboard-set-16-3-0",
+      "displayName": "Real Violin",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-3-1",
+      "displayName": "Serenade Violin",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-3-2",
+      "displayName": "Choir & Soprano",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-3-3",
+      "displayName": "Bell & Strings",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-3-4",
+      "displayName": "Movie Strings",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-3-5",
+      "displayName": "Orchestra Tutti",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-3-6",
+      "displayName": "Scat Voices",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-3-7",
+      "displayName": "A Cappella",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-3-8",
+      "displayName": "Violin",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-3-9",
+      "displayName": "Jazz Violin",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-3-10",
+      "displayName": "Soprano Voice",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-3-11",
+      "displayName": "eXp Viola",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-3-12",
+      "displayName": "Soprano Choir",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-3-13",
+      "displayName": "Dreaming Choir",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-3-14",
+      "displayName": "Vienna Strings",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-3-15",
+      "displayName": "Slapstick Pizz.",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-3-16",
+      "displayName": "Studio Strings",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-3-17",
+      "displayName": "Natural Strings",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-3-18",
+      "displayName": "Small Orchestra",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-3-19",
+      "displayName": "Wiener StringPad",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-3-20",
+      "displayName": "Smooth Orchestra",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-3-21",
+      "displayName": "Strings & Bell",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-3-22",
+      "displayName": "ScatVoice & Bass",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-3-23",
+      "displayName": "Strings & Orch.",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-3-24",
+      "displayName": "Soprano Choir",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-3-25",
+      "displayName": "Oboe & Str. Ens.",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-3-26",
+      "displayName": "Vocal & Str. Ens",
+      "category": "Strings",
+      "bankMSB": 16,
+      "bankLSB": 3,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-4-0",
+      "displayName": "Shake Brass Y+",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-4-1",
+      "displayName": "Horn Section",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-4-2",
+      "displayName": "Smooth Band",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-4-3",
+      "displayName": "Warm Brass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-4-4",
+      "displayName": "SaxEns.& Brass V",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-4-5",
+      "displayName": "Club Mute Sect.",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-4-6",
+      "displayName": "Horns & Strings",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-4-7",
+      "displayName": "Cup & Mute Brass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-4-8",
+      "displayName": "Ballad Brass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-4-9",
+      "displayName": "Sforzato Brass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-4-10",
+      "displayName": "Brass Overtone",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-4-11",
+      "displayName": "Super Brass Y+",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-4-12",
+      "displayName": "Cup Mute Brass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-4-13",
+      "displayName": "BigCountry Horns",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-4-14",
+      "displayName": "Smooth Band RX",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-4-15",
+      "displayName": "MorphAttackBrass",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-4-16",
+      "displayName": "Club Brass Sect.",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-4-17",
+      "displayName": "Cornet & Sax Ens",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-4-18",
+      "displayName": "Cornet&Brass Ens",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-4-19",
+      "displayName": "Sax & Cornet Ens",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-4-20",
+      "displayName": "Muted Ensemble",
+      "category": "Brass",
+      "bankMSB": 16,
+      "bankLSB": 4,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-5-0",
+      "displayName": "JazzTrumpet Leg.",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-5-1",
+      "displayName": "Jazz Cornet 1 FX",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-5-2",
+      "displayName": "Trumpet Delay",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-5-3",
+      "displayName": "Miles Trp FX",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-5-4",
+      "displayName": "Hard Trombone",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-5-5",
+      "displayName": "Jazz Trombone 1",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-5-6",
+      "displayName": "Cornet Legato",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-5-7",
+      "displayName": "Dixie Trumpet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-5-8",
+      "displayName": "Jazz Trumpet 1",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-5-9",
+      "displayName": "Jazz Trumpet 2",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-5-10",
+      "displayName": "Cornet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-5-11",
+      "displayName": "Soft Trombone",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-5-12",
+      "displayName": "Miles Trumpet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-5-13",
+      "displayName": "Sweet Flugel",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-5-14",
+      "displayName": "eXp Trombone",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-5-15",
+      "displayName": "Club Sax & Trp",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-5-16",
+      "displayName": "Band Trumpet V.",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-5-17",
+      "displayName": "Trump.& Clarinet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-5-18",
+      "displayName": "Muted Trp. Band",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-5-19",
+      "displayName": "Jazz Trombone 2",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-5-20",
+      "displayName": "Folk Trumpets",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-5-21",
+      "displayName": "eXp Cornet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-5-22",
+      "displayName": "Cornet & Strings",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-5-23",
+      "displayName": "Jazz Cornet",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-5-24",
+      "displayName": "Jazz Cornet 2 FX",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-5-25",
+      "displayName": "Muted Trp FX",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-5-26",
+      "displayName": "Jazz Trombone 3",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-5-27",
+      "displayName": "Mute Cornet Leg.",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-5-28",
+      "displayName": "Miles Trp Leg. 1",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-5-29",
+      "displayName": "Miles Trp Leg. 2",
+      "category": "Trumpet",
+      "bankMSB": 16,
+      "bankLSB": 5,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-6-0",
+      "displayName": "Jazz Sax 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-6-1",
+      "displayName": "Tenor Sax 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-6-2",
+      "displayName": "Tenor Sax 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-6-3",
+      "displayName": "Soft Latin Sax 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-6-4",
+      "displayName": "Concert Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-6-5",
+      "displayName": "Panflute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-6-6",
+      "displayName": "Jazz Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-6-7",
+      "displayName": "Robin Whistle",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-6-8",
+      "displayName": "Clarinet 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-6-9",
+      "displayName": "Jazz Sax 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-6-10",
+      "displayName": "Soft Latin Sax 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-6-11",
+      "displayName": "Soprano Sax",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-6-12",
+      "displayName": "Jazz Baritone 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-6-13",
+      "displayName": "Cool Oboe",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-6-14",
+      "displayName": "Whistle",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-6-15",
+      "displayName": "Shakuhachi",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-6-16",
+      "displayName": "Real Clarinet",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-6-17",
+      "displayName": "Kenny Soprano",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-6-18",
+      "displayName": "Jazz Baritone 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-6-19",
+      "displayName": "Sweet Alto Sax 1",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-6-20",
+      "displayName": "Sweet Alto Sax 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-6-21",
+      "displayName": "Clarinet 2",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-6-22",
+      "displayName": "Classic Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-6-23",
+      "displayName": "Clarinet 3",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-6-24",
+      "displayName": "Dixie Clarinet",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-6-25",
+      "displayName": "Sweet Tenor Sax",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-6-26",
+      "displayName": "Tenor Sax 4",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-6-27",
+      "displayName": "Soprano Pad",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-6-28",
+      "displayName": "Sax Ensemble",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-6-29",
+      "displayName": "Whistling Rain",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-6-30",
+      "displayName": "Frullato Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 30
+    },
+    {
+      "id": "factory-keyboard-set-16-6-31",
+      "displayName": "Bottle Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 31
+    },
+    {
+      "id": "factory-keyboard-set-16-6-32",
+      "displayName": "Panflute & Synth",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 32
+    },
+    {
+      "id": "factory-keyboard-set-16-6-33",
+      "displayName": "Miller Serenade",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 33
+    },
+    {
+      "id": "factory-keyboard-set-16-6-34",
+      "displayName": "Sax & Brass V.",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 34
+    },
+    {
+      "id": "factory-keyboard-set-16-6-35",
+      "displayName": "Super Sax Sect.3",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 35
+    },
+    {
+      "id": "factory-keyboard-set-16-6-36",
+      "displayName": "Sax Sect. & Trp",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 36
+    },
+    {
+      "id": "factory-keyboard-set-16-6-37",
+      "displayName": "Reeds & Trombone",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 37
+    },
+    {
+      "id": "factory-keyboard-set-16-6-38",
+      "displayName": "March Whistle",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 38
+    },
+    {
+      "id": "factory-keyboard-set-16-6-39",
+      "displayName": "Flutes&Clarinets",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 39
+    },
+    {
+      "id": "factory-keyboard-set-16-6-40",
+      "displayName": "Flute & Muted",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 40
+    },
+    {
+      "id": "factory-keyboard-set-16-6-41",
+      "displayName": "Clarinets & RX",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 41
+    },
+    {
+      "id": "factory-keyboard-set-16-6-42",
+      "displayName": "Vibes & Flute",
+      "category": "Sax & Woodwinds",
+      "bankMSB": 16,
+      "bankLSB": 6,
+      "program": 42
+    },
+    {
+      "id": "factory-keyboard-set-16-7-0",
+      "displayName": "Next Dance",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-7-1",
+      "displayName": "Bros Buzz Y+",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-7-2",
+      "displayName": "Next Octave",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-7-3",
+      "displayName": "Symph Synth",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-7-4",
+      "displayName": "Talking Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-7-5",
+      "displayName": "Hybrid Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-7-6",
+      "displayName": "Distortion Synth",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-7-7",
+      "displayName": "Analog Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-7-8",
+      "displayName": "Big Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-7-9",
+      "displayName": "Mini Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 9
+    },
+    {
+      "id": "factory-keyboard-set-16-7-10",
+      "displayName": "Big One",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 10
+    },
+    {
+      "id": "factory-keyboard-set-16-7-11",
+      "displayName": "Pilot Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 11
+    },
+    {
+      "id": "factory-keyboard-set-16-7-12",
+      "displayName": "Portamento Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 12
+    },
+    {
+      "id": "factory-keyboard-set-16-7-13",
+      "displayName": "Gliding Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 13
+    },
+    {
+      "id": "factory-keyboard-set-16-7-14",
+      "displayName": "Prophy Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 14
+    },
+    {
+      "id": "factory-keyboard-set-16-7-15",
+      "displayName": "Waky Lead",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 15
+    },
+    {
+      "id": "factory-keyboard-set-16-7-16",
+      "displayName": "Big Lead Sine",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 16
+    },
+    {
+      "id": "factory-keyboard-set-16-7-17",
+      "displayName": "Tekno City",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 17
+    },
+    {
+      "id": "factory-keyboard-set-16-7-18",
+      "displayName": "Cosmic Sweep",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 18
+    },
+    {
+      "id": "factory-keyboard-set-16-7-19",
+      "displayName": "Talking Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 19
+    },
+    {
+      "id": "factory-keyboard-set-16-7-20",
+      "displayName": "Fresh Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 20
+    },
+    {
+      "id": "factory-keyboard-set-16-7-21",
+      "displayName": "Dream Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 21
+    },
+    {
+      "id": "factory-keyboard-set-16-7-22",
+      "displayName": "Double Sweep",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 22
+    },
+    {
+      "id": "factory-keyboard-set-16-7-23",
+      "displayName": "Trinity Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 23
+    },
+    {
+      "id": "factory-keyboard-set-16-7-24",
+      "displayName": "Moon Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 24
+    },
+    {
+      "id": "factory-keyboard-set-16-7-25",
+      "displayName": "Pa800 Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 25
+    },
+    {
+      "id": "factory-keyboard-set-16-7-26",
+      "displayName": "Wave Synth",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 26
+    },
+    {
+      "id": "factory-keyboard-set-16-7-27",
+      "displayName": "Wave Sequence",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 27
+    },
+    {
+      "id": "factory-keyboard-set-16-7-28",
+      "displayName": "Space Trailer",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 28
+    },
+    {
+      "id": "factory-keyboard-set-16-7-29",
+      "displayName": "Far Memories",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 29
+    },
+    {
+      "id": "factory-keyboard-set-16-7-30",
+      "displayName": "Step Sequencer",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 30
+    },
+    {
+      "id": "factory-keyboard-set-16-7-31",
+      "displayName": "My Sequencer",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 31
+    },
+    {
+      "id": "factory-keyboard-set-16-7-32",
+      "displayName": "Pisco Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 32
+    },
+    {
+      "id": "factory-keyboard-set-16-7-33",
+      "displayName": "Aereosonic",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 33
+    },
+    {
+      "id": "factory-keyboard-set-16-7-34",
+      "displayName": "Rhythmical Synth",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 34
+    },
+    {
+      "id": "factory-keyboard-set-16-7-35",
+      "displayName": "S&H Pad",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 35
+    },
+    {
+      "id": "factory-keyboard-set-16-7-36",
+      "displayName": "Movie Stack 1",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 36
+    },
+    {
+      "id": "factory-keyboard-set-16-7-37",
+      "displayName": "Movie Stack 2",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 37
+    },
+    {
+      "id": "factory-keyboard-set-16-7-38",
+      "displayName": "Movie Stack 3",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 38
+    },
+    {
+      "id": "factory-keyboard-set-16-7-39",
+      "displayName": "Movie Stack 4",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 39
+    },
+    {
+      "id": "factory-keyboard-set-16-7-40",
+      "displayName": "Eastern Depths",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 40
+    },
+    {
+      "id": "factory-keyboard-set-16-7-41",
+      "displayName": "Wide Attack",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 41
+    },
+    {
+      "id": "factory-keyboard-set-16-7-42",
+      "displayName": "Vocoder 1",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 42
+    },
+    {
+      "id": "factory-keyboard-set-16-7-43",
+      "displayName": "Vocoder 2",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 43
+    },
+    {
+      "id": "factory-keyboard-set-16-7-44",
+      "displayName": "Vocoder 3",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 44
+    },
+    {
+      "id": "factory-keyboard-set-16-7-45",
+      "displayName": "Vocoder 4",
+      "category": "Synth",
+      "bankMSB": 16,
+      "bankLSB": 7,
+      "program": 45
+    },
+    {
+      "id": "factory-keyboard-set-16-8-0",
+      "displayName": "Mandolin",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 0
+    },
+    {
+      "id": "factory-keyboard-set-16-8-1",
+      "displayName": "Mandolins Orch.",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 1
+    },
+    {
+      "id": "factory-keyboard-set-16-8-2",
+      "displayName": "Mandolin Tremolo",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 2
+    },
+    {
+      "id": "factory-keyboard-set-16-8-3",
+      "displayName": "Napoli Mandolin",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 3
+    },
+    {
+      "id": "factory-keyboard-set-16-8-4",
+      "displayName": "Sitar",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 4
+    },
+    {
+      "id": "factory-keyboard-set-16-8-5",
+      "displayName": "IndianFret.&Nay",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 5
+    },
+    {
+      "id": "factory-keyboard-set-16-8-6",
+      "displayName": "Real Banjo",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 6
+    },
+    {
+      "id": "factory-keyboard-set-16-8-7",
+      "displayName": "Pedal Steel Gtr",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 7
+    },
+    {
+      "id": "factory-keyboard-set-16-8-8",
+      "displayName": "Hawaiian Guitar",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 8
+    },
+    {
+      "id": "factory-keyboard-set-16-8-9",
+      "displayName": "Oriental Feel",
+      "category": "Ethnic",
+      "bankMSB": 16,
+      "bankLSB": 8,
+      "program": 9
+    }
+  ]
+}
